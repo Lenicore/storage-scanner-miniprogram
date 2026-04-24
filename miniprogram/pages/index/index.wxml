@@ -1,0 +1,60 @@
+<view class="container page">
+  <view class="hero">
+    <text class="page-title">扫码系统</text>
+    <text class="page-subtitle">点击主按钮即可调用微信扫码，并在当前页面展示结果。</text>
+  </view>
+
+  <view class="card">
+    <view class="section-header">
+      <text class="section-title">快速扫码</text>
+      <text class="section-desc">支持二维码和条形码，当前仅做本地展示。</text>
+    </view>
+
+    <button class="scan-btn" bindtap="handleScan">开始扫码</button>
+  </view>
+
+  <view class="card" wx:if="{{scanResult}}">
+    <view class="section-header">
+      <text class="section-title">扫码结果</text>
+      <text class="section-desc">最近一次扫码内容</text>
+    </view>
+
+    <view class="result-grid">
+      <view class="result-item">
+        <text class="result-label">code_value</text>
+        <text class="result-value">{{scanResult.codeValue}}</text>
+      </view>
+
+      <view class="result-item">
+        <text class="result-label">code_type</text>
+        <text class="result-value">{{scanResult.codeType}}</text>
+      </view>
+
+      <view class="result-item">
+        <text class="result-label">时间</text>
+        <text class="result-value">{{scanResult.scanTime}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-header">
+      <text class="section-title">最近扫码记录</text>
+      <text class="section-desc">仅保存在当前页面的本地数组中</text>
+    </view>
+
+    <view wx:if="{{recentRecords.length}}">
+      <view class="record-item" wx:for="{{recentRecords}}" wx:key="id">
+        <view class="record-top">
+          <text class="record-type">{{item.codeType}}</text>
+          <text class="record-time">{{item.scanTime}}</text>
+        </view>
+        <text class="record-value">{{item.codeValue}}</text>
+      </view>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="empty-text">暂无扫码记录，先试一次扫码吧。</text>
+    </view>
+  </view>
+</view>
