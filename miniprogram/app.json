@@ -1,6 +1,8 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/records/index",
+    "pages/profile/index"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",
@@ -8,6 +10,27 @@
     "navigationBarBackgroundColor": "#F6F6F6",
     "navigationBarTitleText": "扫码系统",
     "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#8e8e93",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "position": "bottom",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/records/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
   },
   "sitemapLocation": "sitemap.json",
   "style": "v2",

@@ -1,0 +1,37 @@
+<view class="records-page">
+  <view class="records-hero">
+    <text class="records-title">扫码记录</text>
+    <text class="records-subtitle">按批次查看最近同步到云端的扫码记录。</text>
+  </view>
+
+  <view class="records-card">
+    <view wx:if="{{isLoadingRecords}}" class="records-empty">
+      <text class="records-empty-text">记录加载中...</text>
+    </view>
+
+    <view wx:elif="{{batchGroups.length}}">
+      <view class="batch-group" wx:for="{{batchGroups}}" wx:key="id">
+        <text class="batch-title">{{item.title}}</text>
+
+        <view class="record-item" wx:for="{{item.items}}" wx:for-item="record" wx:key="id">
+          <view class="record-top">
+            <text class="record-value">{{record.codeValue}}</text>
+            <text class="record-time">{{record.scanTime}}</text>
+          </view>
+
+          <view class="record-meta">
+            <text class="record-category">{{record.categoryName}}</text>
+            <text class="record-dot">·</text>
+            <text class="record-type">{{record.codeType}}</text>
+            <text class="record-dot">·</text>
+            <text class="record-status">{{record.status}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="records-empty">
+      <text class="records-empty-text">暂无云端记录，先回首页扫一个码吧。</text>
+    </view>
+  </view>
+</view>

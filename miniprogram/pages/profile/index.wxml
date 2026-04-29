@@ -1,0 +1,32 @@
+<view class="profile-page">
+  <view class="profile-hero">
+    <text class="profile-title">我的信息</text>
+    <text class="profile-subtitle">当前页面展示云端初始化后的用户身份。</text>
+  </view>
+
+  <view class="profile-card" wx:if="{{userInfo}}">
+    <view class="profile-item">
+      <text class="profile-label">用户昵称</text>
+      <text class="profile-value">{{userInfo.name}}</text>
+    </view>
+
+    <view class="profile-item">
+      <text class="profile-label">用户角色</text>
+      <text class="profile-value">{{userInfo.role}}</text>
+    </view>
+
+    <view class="profile-item">
+      <text class="profile-label">用户状态</text>
+      <text class="profile-value">{{userInfo.status}}</text>
+    </view>
+
+    <view class="profile-item">
+      <text class="profile-label">openid</text>
+      <text class="profile-value profile-openid">{{userInfo.openid}}</text>
+    </view>
+  </view>
+
+  <view class="profile-card" wx:else>
+    <text class="profile-empty">正在初始化用户信息...</text>
+  </view>
+</view>
