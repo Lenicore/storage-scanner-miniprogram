@@ -81,13 +81,84 @@ function buildIdLookup(list) {
   return result;
 }
 
+function buildCategoryOptions(records) {
+  const optionMap = {};
+  const result = [{
+    id: 'all',
+    name: '全部分类'
+  }];
+  let index = 0;
+
+  for (index = 0; index < records.length; index += 1) {
+    const item = records[index];
+    const categoryId = item.categoryId || '';
+    const categoryName = item.categoryName || '未分类';
+
+    if (!categoryId || optionMap[categoryId]) {
+      continue;
+    }
+
+    optionMap[categoryId] = true;
+    result.push({
+      id: categoryId,
+      name: categoryName
+    });
+  }
+
+  return result;
+}
+
+function filterRecords(records, filters) {
+  const keyword = (filters.keyword || '').trim();
+  const userKeyword = (filters.userKeyword || '').trim();
+  const statusFilter = filters.statusFilter || 'all';
+  const categoryFilter = filters.categoryFilter || 'all';
+  const result = [];
+  let index = 0;
+
+  for (index = 0; index < records.length; index += 1) {
+    const item = records[index];
+    let matched = true;
+
+    if (keyword && item.codeValue.indexOf(keyword) === -1) {
+      matched = false;
+    }
+
+    if (matched && userKeyword) {
+      const userText = `${item.userId || ''} ${item.userName || ''}`;
+
+      if (userText.indexOf(userKeyword) === -1) {
+        matched = false;
+      }
+    }
+
+    if (matched && statusFilter !== 'all' && item.status !== statusFilter) {
+      matched = false;
+    }
+
+    if (matched && categoryFilter !== 'all' && item.categoryId !== categoryFilter) {
+      matched = false;
+    }
+
+    if (matched) {
+      result.push(item);
+    }
+  }
+
+  return result;
+}
+
 function formatCloudRecord(record) {
   const createdAt = normalizeDate(record.created_at) || new Date();
   const rawName = record.category_name || '';
   const trimmed = typeof rawName === 'string' ? rawName.trim() : '';
   const categoryName = trimmed ? trimmed : '未分类';
+  const categoryId = record.category_id || '';
   const codeType = record.code_type || 'BAR_CODE';
   const status = record.status || 'pending';
+  const userId = record.user_id || '';
+  const userName = record.user_name || '';
+  const userDisplayName = userName || userId || '未知用户';
 
   return {
     id: record._id || `${Date.now()}`,
@@ -95,10 +166,14 @@ function formatCloudRecord(record) {
     codeValue: record.code_value || '',
     codeType: codeType,
     codeTypeText: formatCodeTypeText(codeType),
+    categoryId: categoryId,
     status: status,
     statusText: formatStatusText(status),
     statusClassName: formatStatusClassName(status),
     categoryName: categoryName,
+    userId: userId,
+    userName: userName,
+    userDisplayName: userDisplayName,
     scanTime: formatSecondTime(createdAt),
     createdAtMs: createdAt.getTime()
   };
@@ -111,10 +186,14 @@ function cloneRecordWithSelection(record, isSelected) {
     codeValue: record.codeValue,
     codeType: record.codeType,
     codeTypeText: record.codeTypeText,
+    categoryId: record.categoryId,
     status: record.status,
     statusText: record.statusText,
     statusClassName: record.statusClassName,
     categoryName: record.categoryName,
+    userId: record.userId,
+    userName: record.userName,
+    userDisplayName: record.userDisplayName,
     scanTime: record.scanTime,
     createdAtMs: record.createdAtMs,
     isSelected: !!isSelected
@@ -319,6 +398,10 @@ Page({
   data: {
     allRecords: [],
     categoryGroups: [],
+    categoryOptions: [{
+      id: 'all',
+      name: '全部分类'
+    }],
     isLoadingRecords: false,
     processingRecordId: '',
     processingAction: '',
@@ -329,7 +412,14 @@ Page({
     selectedMarkedCount: 0,
     selectedArchivedCount: 0,
     isBatchProcessing: false,
-    batchProcessingAction: ''
+    batchProcessingAction: '',
+    searchKeyword: '',
+    userKeyword: '',
+    statusFilter: 'all',
+    categoryFilter: 'all',
+    filteredRecordCount: 0,
+    isAdmin: false,
+    currentUserRole: 'user'
   },
 
   onLoad: function () {
@@ -344,18 +434,99 @@ Page({
   },
 
   applyRecordsView: function (records, selectedIds) {
-    const safeSelectedIds = sanitizeSelectedIds(records, selectedIds);
-    const view = buildRecordsView(records, safeSelectedIds);
+    const categoryOptions = buildCategoryOptions(records);
+    const filteredRecords = filterRecords(records, {
+      keyword: this.data.searchKeyword,
+      userKeyword: this.data.isAdmin ? this.data.userKeyword : '',
+      statusFilter: this.data.statusFilter,
+      categoryFilter: this.data.categoryFilter
+    });
+    const safeSelectedIds = sanitizeSelectedIds(filteredRecords, selectedIds);
+    const view = buildRecordsView(filteredRecords, safeSelectedIds);
 
     this.setData({
       allRecords: records,
+      categoryOptions: categoryOptions,
       categoryGroups: view.groups,
       selectedRecordIds: safeSelectedIds,
       selectedCount: view.selectedCount,
       selectedPendingCount: view.selectedPendingCount,
       selectedMarkedCount: view.selectedMarkedCount,
-      selectedArchivedCount: view.selectedArchivedCount
+      selectedArchivedCount: view.selectedArchivedCount,
+      filteredRecordCount: filteredRecords.length
     });
+  },
+
+  refreshCurrentView: function () {
+    this.applyRecordsView(this.data.allRecords, this.data.selectedRecordIds);
+  },
+
+  handleSearchInput: function (event) {
+    this.setData({
+      searchKeyword: event.detail.value || ''
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleClearSearch: function () {
+    if (!this.data.searchKeyword) {
+      return;
+    }
+
+    this.setData({
+      searchKeyword: ''
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleUserKeywordInput: function (event) {
+    this.setData({
+      userKeyword: event.detail.value || ''
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleClearUserKeyword: function () {
+    if (!this.data.userKeyword) {
+      return;
+    }
+
+    this.setData({
+      userKeyword: ''
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleChangeStatusFilter: function (event) {
+    const status = event.currentTarget.dataset.status || 'all';
+
+    if (status === this.data.statusFilter) {
+      return;
+    }
+
+    this.setData({
+      statusFilter: status
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleChangeCategoryFilter: function (event) {
+    const categoryId = event.currentTarget.dataset.id || 'all';
+
+    if (categoryId === this.data.categoryFilter) {
+      return;
+    }
+
+    this.setData({
+      categoryFilter: categoryId
+    });
+
+    this.refreshCurrentView();
   },
 
   handleToggleBatchMode: function () {
@@ -677,6 +848,8 @@ Page({
     }).then((res) => {
       const result = res.result || {};
       const list = result.records || [];
+      const isAdmin = !!result.is_admin;
+      const role = result.role || 'user';
 
       if (result.success === false) {
         wx.showToast({
@@ -689,6 +862,12 @@ Page({
       const nextSelectedIds = typeof selectedIds === 'undefined'
         ? this.data.selectedRecordIds
         : selectedIds;
+
+      this.setData({
+        isAdmin: isAdmin,
+        currentUserRole: role,
+        userKeyword: isAdmin ? this.data.userKeyword : ''
+      });
 
       this.applyRecordsView(records, nextSelectedIds);
 

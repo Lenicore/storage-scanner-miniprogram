@@ -25,6 +25,94 @@
   line-height: 1.6;
 }
 
+.admin-banner {
+  margin-bottom: 18rpx;
+  padding: 18rpx 20rpx;
+  background: #111111;
+  border-radius: 18rpx;
+}
+
+.admin-banner-text {
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.search-card {
+  margin-bottom: 18rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 18rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 16rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 76rpx;
+  color: #111111;
+  font-size: 26rpx;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  color: #1677ff;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.search-box-secondary {
+  margin-top: 14rpx;
+}
+
+.filter-block + .filter-block {
+  margin-top: 16rpx;
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #8e8e93;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.filter-scroll {
+  white-space: nowrap;
+}
+
+.filter-chip-row {
+  display: inline-flex;
+  gap: 10rpx;
+  padding-right: 8rpx;
+}
+
+.filter-chip {
+  flex-shrink: 0;
+  padding: 12rpx 18rpx;
+  border-radius: 999rpx;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.filter-chip-active {
+  background: #111111;
+  color: #ffffff;
+}
+
 .batch-toolbar {
   display: flex;
   gap: 12rpx;
@@ -255,6 +343,15 @@
   color: #9ca3af;
   font-size: 20rpx;
   line-height: 1.4;
+}
+
+.record-cell-user {
+  display: block;
+  margin-top: 8rpx;
+  color: #6b7280;
+  font-size: 20rpx;
+  line-height: 1.4;
+  word-break: break-all;
 }
 
 .record-action-row {
