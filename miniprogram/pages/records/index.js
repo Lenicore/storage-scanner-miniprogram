@@ -26,7 +26,82 @@ function normalizeDate(value) {
     return value;
   }
 
+  if (value && typeof value === 'object') {
+    if (typeof value.toDate === 'function') {
+      return value.toDate();
+    }
+
+    if (typeof value.seconds === 'number') {
+      return new Date(value.seconds * 1000);
+    }
+
+    if (value.$date) {
+      return new Date(value.$date);
+    }
+  }
+
   return new Date(value);
+}
+
+function parseDateFilter(input) {
+  const value = (input || '').trim();
+  let year = 0;
+  let month = 0;
+  let day = 0;
+  let startDate = null;
+  let endDate = null;
+
+  if (!value) {
+    return null;
+  }
+
+  if (!/^\d{8}$/.test(value)) {
+    return {
+      valid: false,
+      message: '日期格式应为 YYYYMMDD'
+    };
+  }
+
+  year = Number(value.slice(0, 4));
+  month = Number(value.slice(4, 6));
+  day = Number(value.slice(6, 8));
+  startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+  if (
+    startDate.getFullYear() !== year ||
+    startDate.getMonth() !== month - 1 ||
+    startDate.getDate() !== day
+  ) {
+    return {
+      valid: false,
+      message: '日期格式应为 YYYYMMDD'
+    };
+  }
+
+  return {
+    valid: true,
+    input: value,
+    startMs: startDate.getTime(),
+    endMs: endDate.getTime()
+  };
+}
+
+function isSameDate(recordCreatedAt, parsedDate) {
+  const date = normalizeDate(recordCreatedAt);
+  let createdAtMs = 0;
+
+  if (!parsedDate || !parsedDate.valid) {
+    return true;
+  }
+
+  if (!date || isNaN(date.getTime())) {
+    return false;
+  }
+
+  createdAtMs = date.getTime();
+
+  return createdAtMs >= parsedDate.startMs && createdAtMs <= parsedDate.endMs;
 }
 
 function formatCodeTypeText(codeType) {
@@ -123,20 +198,17 @@ function buildCategoryOptions(records) {
 }
 
 function filterRecords(records, filters) {
-  const keyword = (filters.keyword || '').trim();
   const userKeyword = (filters.userKeyword || '').trim();
   const statusFilter = filters.statusFilter || 'all';
   const categoryFilter = filters.categoryFilter || 'all';
+  const currentCategoryId = filters.currentCategoryId || '';
+  const parsedDate = filters.parsedDate || null;
   const result = [];
   let index = 0;
 
   for (index = 0; index < records.length; index += 1) {
     const item = records[index];
     let matched = true;
-
-    if (keyword && item.codeValue.indexOf(keyword) === -1) {
-      matched = false;
-    }
 
     if (matched && userKeyword) {
       const userText = `${item.userId || ''} ${item.userName || ''}`;
@@ -151,6 +223,14 @@ function filterRecords(records, filters) {
     }
 
     if (matched && categoryFilter !== 'all' && item.categoryId !== categoryFilter) {
+      matched = false;
+    }
+
+    if (matched && currentCategoryId && item.categoryId !== currentCategoryId) {
+      matched = false;
+    }
+
+    if (matched && parsedDate && parsedDate.valid && !isSameDate(item.createdAtValue, parsedDate)) {
       matched = false;
     }
 
@@ -194,7 +274,8 @@ function formatCloudRecord(record) {
     qrFileId: qrFileId,
     qrCloudPath: qrCloudPath,
     scanTime: formatSecondTime(createdAt),
-    createdAtMs: createdAt.getTime()
+    createdAtMs: createdAt.getTime(),
+    createdAtValue: record.created_at || createdAt
   };
 }
 
@@ -218,6 +299,7 @@ function cloneRecordWithSelection(record, isSelected) {
     qrCloudPath: record.qrCloudPath,
     scanTime: record.scanTime,
     createdAtMs: record.createdAtMs,
+    createdAtValue: record.createdAtValue,
     isSelected: !!isSelected
   };
 }
@@ -447,10 +529,13 @@ Page({
     selectedArchivedCount: 0,
     isBatchProcessing: false,
     batchProcessingAction: '',
-    searchKeyword: '',
+    dateFilterInput: '',
+    dateFilterTip: '',
     userKeyword: '',
     statusFilter: 'all',
     categoryFilter: 'all',
+    currentCategoryViewId: '',
+    currentCategoryViewName: '',
     filteredRecordCount: 0,
     isAdmin: false,
     currentUserRole: 'user'
@@ -459,6 +544,7 @@ Page({
   onLoad: function () {
     this._hasInitialized = false;
     this._lastFetchAt = 0;
+    this._parsedDateFilter = null;
     this.initRecords();
   },
 
@@ -523,10 +609,11 @@ Page({
     const nextIsAdmin = typeof nextState.isAdmin === 'boolean' ? nextState.isAdmin : this.data.isAdmin;
     const categoryOptions = buildCategoryOptions(records);
     const filteredRecords = filterRecords(records, {
-      keyword: this.data.searchKeyword,
       userKeyword: nextIsAdmin ? this.data.userKeyword : '',
       statusFilter: this.data.statusFilter,
-      categoryFilter: this.data.categoryFilter
+      categoryFilter: this.data.categoryFilter,
+      currentCategoryId: this.data.currentCategoryViewId,
+      parsedDate: this._parsedDateFilter
     });
     const safeSelectedIds = sanitizeSelectedIds(filteredRecords, selectedIds);
     const view = buildRecordsView(filteredRecords, safeSelectedIds);
@@ -570,21 +657,39 @@ Page({
     return this.fetchRecords();
   },
 
-  handleSearchInput: function (event) {
+  handleDateFilterInput: function (event) {
+    const nextValue = (event.detail.value || '').replace(/\D/g, '').slice(0, 8);
+    const parsedDate = parseDateFilter(nextValue);
+    let tip = '';
+
+    if (!nextValue) {
+      this._parsedDateFilter = null;
+    } else if (nextValue.length === 8 && parsedDate && parsedDate.valid) {
+      this._parsedDateFilter = parsedDate;
+    } else if (nextValue.length === 8) {
+      this._parsedDateFilter = null;
+      tip = parsedDate && parsedDate.message ? parsedDate.message : '日期格式应为 YYYYMMDD';
+    } else {
+      this._parsedDateFilter = null;
+    }
+
     this.setData({
-      searchKeyword: event.detail.value || ''
+      dateFilterInput: nextValue,
+      dateFilterTip: tip
     });
 
     this.refreshCurrentView();
   },
 
-  handleClearSearch: function () {
-    if (!this.data.searchKeyword) {
+  handleClearDateFilter: function () {
+    if (!this.data.dateFilterInput) {
       return;
     }
 
+    this._parsedDateFilter = null;
     this.setData({
-      searchKeyword: ''
+      dateFilterInput: '',
+      dateFilterTip: ''
     });
 
     this.refreshCurrentView();
@@ -633,6 +738,35 @@ Page({
 
     this.setData({
       categoryFilter: categoryId
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleEnterCategoryView: function (event) {
+    const categoryId = event.currentTarget.dataset.categoryId || '';
+    const categoryName = event.currentTarget.dataset.categoryName || '';
+
+    if (!categoryId) {
+      return;
+    }
+
+    this.setData({
+      currentCategoryViewId: categoryId,
+      currentCategoryViewName: categoryName || '未分类'
+    });
+
+    this.refreshCurrentView();
+  },
+
+  handleExitCategoryView: function () {
+    if (!this.data.currentCategoryViewId) {
+      return;
+    }
+
+    this.setData({
+      currentCategoryViewId: '',
+      currentCategoryViewName: ''
     });
 
     this.refreshCurrentView();

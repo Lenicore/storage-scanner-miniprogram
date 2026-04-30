@@ -8,16 +8,27 @@
     <text class="admin-banner-text">管理员模式：查看全部记录</text>
   </view>
 
+  <view wx:if="{{currentCategoryViewId}}" class="current-category-card">
+    <view class="current-category-main">
+      <text class="current-category-label">当前分类</text>
+      <text class="current-category-name">{{currentCategoryViewName}}</text>
+    </view>
+    <text class="current-category-back" bindtap="handleExitCategoryView">返回全部</text>
+  </view>
+
   <view class="search-card">
     <view class="search-box">
       <input
         class="search-input"
-        placeholder="搜索条码/二维码内容"
-        value="{{searchKeyword}}"
-        bindinput="handleSearchInput"
+        type="number"
+        maxlength="8"
+        placeholder="输入日期，如 20260402"
+        value="{{dateFilterInput}}"
+        bindinput="handleDateFilterInput"
       />
-      <text wx:if="{{searchKeyword}}" class="search-clear" bindtap="handleClearSearch">清空</text>
+      <text wx:if="{{dateFilterInput}}" class="search-clear" bindtap="handleClearDateFilter">清空</text>
     </view>
+    <text wx:if="{{dateFilterTip}}" class="filter-tip">{{dateFilterTip}}</text>
 
     <view wx:if="{{isAdmin}}" class="search-box search-box-secondary">
       <input
@@ -110,12 +121,29 @@
 
   <block wx:if="{{categoryGroups.length}}">
     <view class="cat-section" wx:for="{{categoryGroups}}" wx:key="id">
-      <view class="cat-section-head">
+      <view
+        class="cat-section-head cat-section-head-clickable"
+        hover-class="cat-section-head-hover"
+        data-category-id="{{item.items[0].categoryId}}"
+        data-category-name="{{item.categoryName}}"
+        bindtap="handleEnterCategoryView"
+      >
         <view class="cat-section-head-main">
           <text class="cat-section-title">{{item.categoryName}}</text>
-          <text class="cat-section-count">{{item.count}} 条</text>
+          <text class="cat-section-subtitle">点击查看该分类</text>
         </view>
-        <view wx:if="{{isBatchMode}}" class="cat-section-head-action">
+        <view wx:if="{{!isBatchMode}}" class="cat-section-view-side">
+          <text class="cat-section-count">{{item.count}} 条</text>
+          <text
+            class="cat-section-enter-btn"
+            data-category-id="{{item.items[0].categoryId}}"
+            data-category-name="{{item.categoryName}}"
+            catchtap="handleEnterCategoryView"
+          >
+            进入
+          </text>
+        </view>
+        <view wx:else class="cat-section-head-action">
           <text class="cat-section-selected">{{item.selectedCount}} 已选</text>
           <text class="cat-section-toggle" data-id="{{item.id}}" bindtap="handleToggleCategorySelect">
             {{item.allSelected ? '取消本组' : '全选当前分类'}}
