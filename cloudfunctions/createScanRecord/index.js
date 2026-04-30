@@ -41,6 +41,18 @@ async function findDuplicateRecord(openid, categoryId, codeValue) {
   return result.data[0];
 }
 
+async function getUserProfile(openid) {
+  const result = await db.collection('users').where({
+    openid: openid
+  }).limit(1).get();
+
+  if (!result.data || !result.data.length) {
+    return null;
+  }
+
+  return result.data[0];
+}
+
 exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
@@ -75,6 +87,7 @@ exports.main = async (event) => {
     }
 
     const duplicateRecord = await findDuplicateRecord(openid, categoryId, codeValue);
+    const currentUser = await getUserProfile(openid);
 
     if (duplicateRecord) {
       return {
@@ -100,6 +113,8 @@ exports.main = async (event) => {
       category_id: categoryId,
       category_name: categoryName,
       user_id: openid,
+      user_name: currentUser && currentUser.name ? currentUser.name : '未命名用户',
+      user_avatar_url: currentUser && currentUser.avatar_url ? currentUser.avatar_url : '',
       updated_at: now,
       created_at: now,
       status: 'pending'

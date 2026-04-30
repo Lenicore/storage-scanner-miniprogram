@@ -1,29 +1,44 @@
 <view class="profile-page">
   <view class="profile-hero">
     <text class="profile-title">我的信息</text>
-    <text class="profile-subtitle">当前页面展示云端初始化后的用户身份。</text>
+    <text class="profile-subtitle">完善头像和昵称后，管理员识别员工会更清晰。</text>
   </view>
 
   <view class="profile-card" wx:if="{{userInfo}}">
-    <view class="profile-item">
-      <text class="profile-label">用户昵称</text>
-      <text class="profile-value">{{userInfo.name}}</text>
+    <view class="profile-avatar-section">
+      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="handleChooseAvatar">
+        <image wx:if="{{formAvatarUrl}}" class="profile-avatar-image" src="{{formAvatarUrl}}" mode="aspectFill" />
+        <view wx:else class="profile-avatar-placeholder">
+          <text class="profile-avatar-placeholder-text">选择头像</text>
+        </view>
+      </button>
+      <text class="profile-avatar-tip">点击头像选择新的微信头像</text>
     </view>
 
     <view class="profile-item">
-      <text class="profile-label">用户角色</text>
-      <text class="profile-value">{{userInfo.role}}</text>
+      <text class="profile-label">昵称</text>
+      <input
+        class="profile-input"
+        type="nickname"
+        placeholder="请输入昵称"
+        value="{{formName}}"
+        bindinput="handleNameInput"
+      />
     </view>
 
     <view class="profile-item">
-      <text class="profile-label">用户状态</text>
-      <text class="profile-value">{{userInfo.status}}</text>
+      <text class="profile-label">角色</text>
+      <text class="profile-value">{{userInfo.roleText}}</text>
     </view>
 
     <view class="profile-item">
-      <text class="profile-label">openid</text>
-      <text class="profile-value profile-openid">{{userInfo.openid}}</text>
+      <text class="profile-label">状态</text>
+      <text class="profile-value">{{userInfo.statusText}}</text>
     </view>
+
+    <button class="profile-save-btn" disabled="{{isSaving}}" bindtap="handleSaveProfile">
+      {{isSaving ? '保存中' : '保存资料'}}
+    </button>
   </view>
 
   <view class="profile-card" wx:else>

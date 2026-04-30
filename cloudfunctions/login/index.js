@@ -25,8 +25,11 @@ exports.main = async () => {
         userInfo: {
           openid: currentUser.openid || openid,
           name: currentUser.name || '未命名用户',
+          avatar_url: currentUser.avatar_url || '',
           role: currentUser.role || 'user',
-          status: currentUser.status || 'active'
+          status: currentUser.status || 'active',
+          created_at: currentUser.created_at || null,
+          updated_at: currentUser.updated_at || null
         }
       };
     }
@@ -45,6 +48,7 @@ exports.main = async () => {
   const newUser = {
     openid: openid,
     name: '未命名用户',
+    avatar_url: '',
     role: 'user',
     status: 'active',
     created_at: now,
@@ -62,8 +66,11 @@ exports.main = async () => {
       userInfo: {
         openid: newUser.openid,
         name: newUser.name,
+        avatar_url: newUser.avatar_url,
         role: newUser.role,
-        status: newUser.status
+        status: newUser.status,
+        created_at: newUser.created_at,
+        updated_at: newUser.updated_at
       }
     };
   } catch (error) {

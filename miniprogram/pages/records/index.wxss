@@ -176,6 +176,14 @@
   line-height: 1.6;
 }
 
+.records-refresh-tip {
+  display: block;
+  margin-bottom: 18rpx;
+  color: #8e8e93;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
 .cat-section {
   margin-bottom: 24rpx;
   padding: 24rpx 20rpx 20rpx;

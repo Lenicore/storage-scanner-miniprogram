@@ -6,10 +6,12 @@ cloud.init({
 
 const db = cloud.database();
 
-exports.main = async () => {
+exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID || '';
+    const eventLimit = Number(event && event.limit);
+    const limit = eventLimit > 0 ? eventLimit : 100;
 
     if (!openid) {
       return {
@@ -40,7 +42,7 @@ exports.main = async () => {
     if (isAdmin) {
       result = await recordsQuery
         .orderBy('created_at', 'desc')
-        .limit(1000)
+        .limit(limit)
         .get();
     } else {
       result = await recordsQuery
@@ -48,7 +50,7 @@ exports.main = async () => {
           user_id: openid
         })
         .orderBy('created_at', 'desc')
-        .limit(1000)
+        .limit(limit)
         .get();
     }
 
@@ -56,7 +58,8 @@ exports.main = async () => {
       success: true,
       records: result.data || [],
       role: role,
-      is_admin: isAdmin
+      is_admin: isAdmin,
+      limit: limit
     };
   } catch (error) {
     console.error('get user scan records failed:', error);

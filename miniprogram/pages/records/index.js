@@ -2,6 +2,10 @@ function padNumber(value) {
   return value < 10 ? `0${value}` : `${value}`;
 }
 
+const RECORDS_CACHE_KEY = 'scan_records_cache';
+const RECORDS_FETCH_LIMIT = 100;
+const REFRESH_INTERVAL_MS = 5000;
+
 function formatSecondTime(date) {
   const year = date.getFullYear();
   const month = padNumber(date.getMonth() + 1);
@@ -412,6 +416,18 @@ function getBatchActionConfig(action) {
   return null;
 }
 
+function formatCloudRecords(list) {
+  const source = Array.isArray(list) ? list : [];
+  const records = [];
+  let index = 0;
+
+  for (index = 0; index < source.length; index += 1) {
+    records.push(formatCloudRecord(source[index]));
+  }
+
+  return records;
+}
+
 Page({
   data: {
     allRecords: [],
@@ -441,21 +457,74 @@ Page({
   },
 
   onLoad: function () {
-  },
-
-  onShow: function () {
+    this._hasInitialized = false;
+    this._lastFetchAt = 0;
     this.initRecords();
   },
 
-  initRecords: function () {
-    return this.fetchRecords();
+  onShow: function () {
+    if (!this._hasInitialized) {
+      return;
+    }
+
+    this.refreshRecordsInBackground();
   },
 
-  applyRecordsView: function (records, selectedIds) {
+  initRecords: function () {
+    this._hasInitialized = true;
+
+    if (!this.data.categoryGroups.length) {
+      this.setData({
+        isLoadingRecords: true
+      });
+    }
+
+    this.restoreRecordsCache();
+    return this.fetchRecords(undefined, true);
+  },
+
+  restoreRecordsCache: function () {
+    let cache = null;
+
+    try {
+      cache = wx.getStorageSync(RECORDS_CACHE_KEY);
+    } catch (error) {
+      console.error('read records cache failed:', error);
+      return;
+    }
+
+    if (!cache || !cache.records || !cache.records.length) {
+      return;
+    }
+
+    this.renderRecordsState(formatCloudRecords(cache.records), [], {
+      isAdmin: !!cache.is_admin,
+      currentUserRole: cache.role || 'user',
+      userKeyword: cache.is_admin ? this.data.userKeyword : '',
+      isLoadingRecords: true
+    });
+  },
+
+  saveRecordsCache: function (payload) {
+    try {
+      wx.setStorageSync(RECORDS_CACHE_KEY, {
+        records: payload.records || [],
+        role: payload.role || 'user',
+        is_admin: !!payload.is_admin,
+        saved_at: Date.now()
+      });
+    } catch (error) {
+      console.error('save records cache failed:', error);
+    }
+  },
+
+  renderRecordsState: function (records, selectedIds, extraState) {
+    const nextState = extraState || {};
+    const nextIsAdmin = typeof nextState.isAdmin === 'boolean' ? nextState.isAdmin : this.data.isAdmin;
     const categoryOptions = buildCategoryOptions(records);
     const filteredRecords = filterRecords(records, {
       keyword: this.data.searchKeyword,
-      userKeyword: this.data.isAdmin ? this.data.userKeyword : '',
+      userKeyword: nextIsAdmin ? this.data.userKeyword : '',
       statusFilter: this.data.statusFilter,
       categoryFilter: this.data.categoryFilter
     });
@@ -471,12 +540,34 @@ Page({
       selectedPendingCount: view.selectedPendingCount,
       selectedMarkedCount: view.selectedMarkedCount,
       selectedArchivedCount: view.selectedArchivedCount,
-      filteredRecordCount: filteredRecords.length
+      filteredRecordCount: filteredRecords.length,
+      isAdmin: nextIsAdmin,
+      currentUserRole: nextState.currentUserRole || this.data.currentUserRole,
+      userKeyword: typeof nextState.userKeyword === 'string' ? nextState.userKeyword : this.data.userKeyword,
+      isLoadingRecords: typeof nextState.isLoadingRecords === 'boolean' ? nextState.isLoadingRecords : this.data.isLoadingRecords
     });
+  },
+
+  applyRecordsView: function (records, selectedIds) {
+    this.renderRecordsState(records, selectedIds);
   },
 
   refreshCurrentView: function () {
     this.applyRecordsView(this.data.allRecords, this.data.selectedRecordIds);
+  },
+
+  refreshRecordsInBackground: function () {
+    const now = Date.now();
+
+    if (this.data.isLoadingRecords) {
+      return Promise.resolve([]);
+    }
+
+    if (now - this._lastFetchAt < REFRESH_INTERVAL_MS) {
+      return Promise.resolve(this.data.allRecords);
+    }
+
+    return this.fetchRecords();
   },
 
   handleSearchInput: function (event) {
@@ -865,17 +956,21 @@ Page({
     });
   },
 
-  fetchRecords: function (selectedIds) {
-    if (this.data.isLoadingRecords) {
+  fetchRecords: function (selectedIds, skipLock) {
+    if (this.data.isLoadingRecords && !skipLock) {
       return Promise.resolve([]);
     }
 
+    this._lastFetchAt = Date.now();
     this.setData({
       isLoadingRecords: true
     });
 
     return wx.cloud.callFunction({
-      name: 'getUserScanRecords'
+      name: 'getUserScanRecords',
+      data: {
+        limit: RECORDS_FETCH_LIMIT
+      }
     }).then((res) => {
       const result = res.result || {};
       const list = result.records || [];
@@ -887,20 +982,25 @@ Page({
           title: result.message || '记录加载失败',
           icon: 'none'
         });
+
+        this.setData({
+          isLoadingRecords: false
+        });
+        return this.data.allRecords;
       }
 
-      const records = list.map((item) => formatCloudRecord(item));
+      const records = formatCloudRecords(list);
       const nextSelectedIds = typeof selectedIds === 'undefined'
         ? this.data.selectedRecordIds
         : selectedIds;
 
-      this.setData({
+      this.saveRecordsCache(result);
+      this.renderRecordsState(records, nextSelectedIds, {
         isAdmin: isAdmin,
         currentUserRole: role,
-        userKeyword: isAdmin ? this.data.userKeyword : ''
+        userKeyword: isAdmin ? this.data.userKeyword : '',
+        isLoadingRecords: false
       });
-
-      this.applyRecordsView(records, nextSelectedIds);
 
       return records;
     }).catch((error) => {
@@ -909,11 +1009,10 @@ Page({
         title: '记录加载失败',
         icon: 'none'
       });
-      return [];
-    }).finally(() => {
       this.setData({
         isLoadingRecords: false
       });
+      return this.data.allRecords;
     });
   }
 });

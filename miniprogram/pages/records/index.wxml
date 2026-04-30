@@ -102,11 +102,13 @@
 
   <text wx:if="{{isBatchMode}}" class="batch-mode-tip">勾选记录后，可在底部进行批量操作。</text>
 
-  <view wx:if="{{isLoadingRecords}}" class="records-loading-card">
+  <view wx:if="{{isLoadingRecords && !categoryGroups.length}}" class="records-loading-card">
     <text class="records-empty-text">记录加载中...</text>
   </view>
 
-  <block wx:elif="{{categoryGroups.length}}">
+  <text wx:elif="{{isLoadingRecords}}" class="records-refresh-tip">记录加载中...</text>
+
+  <block wx:if="{{categoryGroups.length}}">
     <view class="cat-section" wx:for="{{categoryGroups}}" wx:key="id">
       <view class="cat-section-head">
         <view class="cat-section-head-main">
