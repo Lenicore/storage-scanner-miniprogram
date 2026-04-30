@@ -39,6 +39,16 @@ function formatCodeTypeText(codeType) {
   return '其他';
 }
 
+function shouldShowCodeValue(codeType) {
+  const value = codeType || '';
+
+  if (value === 'QR_CODE' || value === 'QR' || value === '二维码') {
+    return false;
+  }
+
+  return true;
+}
+
 function formatStatusText(status) {
   const value = status || 'pending';
 
@@ -167,6 +177,7 @@ function formatCloudRecord(record) {
     groupKey: categoryName,
     codeValue: record.code_value || '',
     codeType: codeType,
+    showCodeValue: shouldShowCodeValue(codeType),
     codeTypeText: formatCodeTypeText(codeType),
     categoryId: categoryId,
     status: status,
@@ -189,6 +200,7 @@ function cloneRecordWithSelection(record, isSelected) {
     groupKey: record.groupKey,
     codeValue: record.codeValue,
     codeType: record.codeType,
+    showCodeValue: record.showCodeValue,
     codeTypeText: record.codeTypeText,
     categoryId: record.categoryId,
     status: record.status,

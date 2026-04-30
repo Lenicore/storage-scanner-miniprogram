@@ -30,7 +30,7 @@
     </view>
 
     <view class="viewer-info-card">
-      <text class="viewer-code">{{currentRecord.codeValue}}</text>
+      <text wx:if="{{currentRecord.showCodeValue}}" class="viewer-code">{{currentRecord.codeValue}}</text>
       <view class="viewer-meta-row">
         <text class="viewer-type">{{currentRecord.codeTypeText}}</text>
         <text class="viewer-status {{currentRecord.statusClassName}}">{{currentRecord.statusText}}</text>

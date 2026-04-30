@@ -146,50 +146,54 @@
                 <view wx:else class="record-cell-qr-placeholder">
                   <text class="record-cell-qr-placeholder-text">无图</text>
                 </view>
-                <text class="record-cell-code">{{record.codeValue}}</text>
+                <text wx:if="{{record.showCodeValue}}" class="record-cell-code">{{record.codeValue}}</text>
               </view>
             </view>
             <text class="record-status-tag {{record.statusClassName}}">{{record.statusText}}</text>
           </view>
-          <text class="record-cell-type">{{record.codeTypeText}}</text>
-          <text wx:if="{{isAdmin}}" class="record-cell-user">{{record.userDisplayName}}</text>
-          <text class="record-cell-time">{{record.scanTime}}</text>
+          <view class="record-cell-body">
+            <view class="record-cell-meta">
+              <text class="record-cell-type">{{record.codeTypeText}}</text>
+              <text wx:if="{{isAdmin}}" class="record-cell-user">{{record.userDisplayName}}</text>
+              <text class="record-cell-time">{{record.scanTime}}</text>
+            </view>
 
-          <view wx:if="{{!isBatchMode && record.status === 'pending'}}" class="record-action-row">
-            <button
-              class="record-action-btn action-primary"
-              data-id="{{record.id}}"
-              data-code="{{record.codeValue}}"
-              disabled="{{processingRecordId === record.id}}"
-              catchtap="handleMarkRecord"
-            >
-              {{processingRecordId === record.id ? '处理中' : '标记'}}
-            </button>
-          </view>
+            <view wx:if="{{!isBatchMode && record.status === 'pending'}}" class="record-action-row">
+              <button
+                class="record-action-btn action-primary"
+                data-id="{{record.id}}"
+                data-code="{{record.codeValue}}"
+                disabled="{{processingRecordId === record.id}}"
+                catchtap="handleMarkRecord"
+              >
+                {{processingRecordId === record.id ? '处理中' : '标记'}}
+              </button>
+            </view>
 
-          <view wx:elif="{{!isBatchMode && record.status === 'marked'}}" class="record-action-row">
-            <button
-              class="record-action-btn action-secondary"
-              data-id="{{record.id}}"
-              data-code="{{record.codeValue}}"
-              disabled="{{processingRecordId === record.id}}"
-              catchtap="handleUndoMarkRecord"
-            >
-              {{processingRecordId === record.id ? '处理中' : '撤回'}}
-            </button>
-            <button
-              class="record-action-btn action-primary"
-              data-id="{{record.id}}"
-              data-code="{{record.codeValue}}"
-              disabled="{{processingRecordId === record.id}}"
-              catchtap="handleArchiveRecord"
-            >
-              {{processingRecordId === record.id ? '处理中' : '归档'}}
-            </button>
-          </view>
+            <view wx:elif="{{!isBatchMode && record.status === 'marked'}}" class="record-action-row">
+              <button
+                class="record-action-btn action-secondary"
+                data-id="{{record.id}}"
+                data-code="{{record.codeValue}}"
+                disabled="{{processingRecordId === record.id}}"
+                catchtap="handleUndoMarkRecord"
+              >
+                {{processingRecordId === record.id ? '处理中' : '撤回'}}
+              </button>
+              <button
+                class="record-action-btn action-primary"
+                data-id="{{record.id}}"
+                data-code="{{record.codeValue}}"
+                disabled="{{processingRecordId === record.id}}"
+                catchtap="handleArchiveRecord"
+              >
+                {{processingRecordId === record.id ? '处理中' : '归档'}}
+              </button>
+            </view>
 
-          <view wx:elif="{{!isBatchMode}}" class="record-action-row record-action-row-static">
-            <text class="record-archived-text">已归档</text>
+            <view wx:elif="{{!isBatchMode}}" class="record-action-row record-action-row-static">
+              <text class="record-archived-text">已归档</text>
+            </view>
           </view>
         </view>
       </view>

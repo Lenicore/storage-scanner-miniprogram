@@ -43,6 +43,10 @@
       <text class="section-title">扫码结果</text>
     </view>
 
+    <view wx:if="{{scanNotice}}" class="result-notice">
+      <text class="result-notice-text">{{scanNotice}}</text>
+    </view>
+
     <view wx:if="{{scanResult.qrFileId}}" class="result-qr-wrap">
       <image class="result-qr-image" src="{{scanResult.qrFileId}}" mode="aspectFit" />
     </view>
@@ -66,6 +70,11 @@
       <view class="result-item">
         <text class="result-label">时间</text>
         <text class="result-value">{{scanResult.scanTime}}</text>
+      </view>
+
+      <view class="result-item">
+        <text class="result-label">状态</text>
+        <text class="result-value">{{scanResult.statusText}}</text>
       </view>
     </view>
   </view>

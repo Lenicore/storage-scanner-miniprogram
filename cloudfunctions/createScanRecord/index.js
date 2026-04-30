@@ -27,6 +27,20 @@ async function createQrAsset(openid, codeValue, now) {
   };
 }
 
+async function findDuplicateRecord(openid, categoryId, codeValue) {
+  const result = await db.collection('scan_records').where({
+    user_id: openid,
+    category_id: categoryId,
+    code_value: codeValue
+  }).limit(1).get();
+
+  if (!result.data || !result.data.length) {
+    return null;
+  }
+
+  return result.data[0];
+}
+
 exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
@@ -57,6 +71,23 @@ exports.main = async (event) => {
         success: false,
         error: 'OPENID_REQUIRED',
         message: '用户信息获取失败'
+      };
+    }
+
+    const duplicateRecord = await findDuplicateRecord(openid, categoryId, codeValue);
+
+    if (duplicateRecord) {
+      return {
+        success: false,
+        code: 'DUPLICATE_CODE',
+        message: '该码已存在于当前分类',
+        existingRecord: {
+          _id: duplicateRecord._id || '',
+          code_value: duplicateRecord.code_value || '',
+          category_name: duplicateRecord.category_name || categoryName,
+          created_at: duplicateRecord.created_at || null,
+          status: duplicateRecord.status || 'pending'
+        }
       };
     }
 

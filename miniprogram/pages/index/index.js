@@ -31,6 +31,20 @@ function formatCodeTypeText(codeType) {
   return '其他';
 }
 
+function formatStatusText(status) {
+  const value = status || 'pending';
+
+  if (value === 'marked') {
+    return '已标记';
+  }
+
+  if (value === 'archived') {
+    return '已归档';
+  }
+
+  return '未处理';
+}
+
 function normalizeDate(value) {
   if (!value) {
     return new Date();
@@ -54,7 +68,8 @@ function formatCloudRecord(record) {
     categoryId: record.category_id || '',
     categoryName: record.category_name || '',
     scanTime: formatTime(normalizeDate(record.created_at)),
-    status: record.status || 'pending'
+    status: record.status || 'pending',
+    statusText: formatStatusText(record.status)
   };
 }
 
@@ -118,7 +133,28 @@ function updateLocalRecordWithCloudData(localRecord, cloudResult) {
     categoryId: recordData.category_id || localRecord.categoryId,
     categoryName: recordData.category_name || localRecord.categoryName,
     scanTime: formatTime(normalizeDate(recordData.created_at || localRecord.scanTime)),
-    status: recordData.status || localRecord.status || 'pending'
+    status: recordData.status || localRecord.status || 'pending',
+    statusText: formatStatusText(recordData.status || localRecord.status || 'pending')
+  };
+}
+
+function buildDuplicateRecord(localRecord, existingRecord) {
+  const source = existingRecord || {};
+  const status = source.status || localRecord.status || 'pending';
+
+  return {
+    id: source._id || localRecord.id,
+    codeValue: source.code_value || localRecord.codeValue,
+    codeType: localRecord.codeType,
+    codeTypeText: localRecord.codeTypeText,
+    qrFileId: '',
+    qrCloudPath: '',
+    categoryId: localRecord.categoryId,
+    categoryName: source.category_name || localRecord.categoryName,
+    scanTime: formatTime(normalizeDate(source.created_at || new Date())),
+    status: status,
+    statusText: formatStatusText(status),
+    isDuplicate: true
   };
 }
 
@@ -142,6 +178,7 @@ function replaceRecordAtTop(list, record, sourceRecord) {
 Page({
   data: {
     scanResult: null,
+    scanNotice: '',
     recentRecords: [],
     categories: [],
     selectedCategory: null,
@@ -418,6 +455,10 @@ Page({
       const result = res.result || {};
 
       if (!result.success) {
+        if (result.code === 'DUPLICATE_CODE') {
+          return result;
+        }
+
         wx.showToast({
           title: result.message || '扫码记录保存失败',
           icon: 'none'
@@ -436,6 +477,14 @@ Page({
       return {
         success: false
       };
+    });
+  },
+
+  showDuplicateRecordNotice: function (record) {
+    wx.showModal({
+      title: '重复扫码',
+      content: `该码已存在于当前分类\n分类：${record.categoryName || '未分类'}\n时间：${record.scanTime}\n状态：${record.statusText}`,
+      showCancel: false
     });
   },
 
@@ -459,22 +508,30 @@ Page({
           id: `${Date.now()}`,
           codeValue: codeValue,
           codeType: codeType,
-        codeTypeText: formatCodeTypeText(codeType),
-        qrFileId: '',
-        qrCloudPath: '',
+          codeTypeText: formatCodeTypeText(codeType),
+          qrFileId: '',
+          qrCloudPath: '',
           categoryId: selectedCategory.id,
           categoryName: selectedCategory.name,
-        scanTime: scanTime,
-        status: 'pending'
+          scanTime: scanTime,
+          status: 'pending',
+          statusText: formatStatusText('pending'),
+          isDuplicate: false
         };
-
-        this.setData({
-          scanResult: record,
-          recentRecords: [record].concat(this.data.recentRecords).slice(0, 6)
-        });
 
         this.saveScanRecordToCloud(record).then((result) => {
           if (!result || !result.success) {
+            if (result && result.code === 'DUPLICATE_CODE') {
+              const duplicateRecord = buildDuplicateRecord(record, result.existingRecord || {});
+
+              this.setData({
+                scanResult: duplicateRecord,
+                scanNotice: '该码已存在于当前分类'
+              });
+
+              this.showDuplicateRecordNotice(duplicateRecord);
+            }
+
             return;
           }
 
@@ -482,13 +539,14 @@ Page({
 
           this.setData({
             scanResult: cloudRecord,
+            scanNotice: '',
             recentRecords: replaceRecordAtTop(this.data.recentRecords, cloudRecord, record)
           });
-        });
 
-        wx.showToast({
-          title: '扫码成功',
-          icon: 'success'
+          wx.showToast({
+            title: '扫码成功',
+            icon: 'success'
+          });
         });
       },
       fail: (error) => {

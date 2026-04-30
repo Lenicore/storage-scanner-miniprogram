@@ -39,6 +39,16 @@ function formatCodeTypeText(codeType) {
   return '其他';
 }
 
+function shouldShowCodeValue(codeType) {
+  const value = codeType || '';
+
+  if (value === 'QR_CODE' || value === 'QR' || value === '二维码') {
+    return false;
+  }
+
+  return true;
+}
+
 function formatStatusText(status) {
   const value = status || 'pending';
 
@@ -80,6 +90,7 @@ function formatCloudRecord(record) {
     id: record._id || `${Date.now()}`,
     codeValue: record.code_value || '',
     codeType: codeType,
+    showCodeValue: shouldShowCodeValue(codeType),
     codeTypeText: formatCodeTypeText(codeType),
     categoryId: categoryId,
     categoryName: categoryName,
@@ -281,6 +292,7 @@ Page({
         id: currentRecord.id,
         codeValue: currentRecord.codeValue,
         codeType: currentRecord.codeType,
+        showCodeValue: currentRecord.showCodeValue,
         codeTypeText: currentRecord.codeTypeText,
         categoryId: currentRecord.categoryId,
         categoryName: currentRecord.categoryName,

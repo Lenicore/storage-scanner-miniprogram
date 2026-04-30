@@ -238,18 +238,22 @@
 .record-cell-grid {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: 12rpx;
   padding-top: 18rpx;
 }
 
 .record-cell {
   width: calc((100% - 12rpx) / 2);
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
-  min-height: 232rpx;
+  height: 372rpx;
   padding: 18rpx 16rpx;
   border-radius: 16rpx;
   background: #f8fafc;
   border: 1rpx solid #e5e7eb;
+  overflow: hidden;
 }
 
 .record-cell-top {
@@ -268,8 +272,26 @@
 }
 
 .record-cell-content {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
+  min-height: 152rpx;
+}
+
+.record-cell-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.record-cell-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-height: 80rpx;
+  margin-top: 10rpx;
 }
 
 .record-check {
@@ -300,14 +322,15 @@
 
 .record-cell-code {
   display: block;
-  flex: 1;
   min-width: 0;
+  margin-top: 12rpx;
   color: #111111;
   font-size: 24rpx;
   font-weight: 600;
   line-height: 1.45;
-  word-break: break-all;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-cell-qr,
@@ -357,34 +380,42 @@
 
 .record-cell-type {
   display: block;
-  margin-top: 10rpx;
   color: #6b7280;
   font-size: 22rpx;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-cell-time {
   display: block;
-  margin-top: 8rpx;
   color: #9ca3af;
   font-size: 20rpx;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-cell-user {
   display: block;
-  margin-top: 8rpx;
   color: #6b7280;
   font-size: 20rpx;
   line-height: 1.4;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-action-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: 10rpx;
-  margin-top: 14rpx;
+  min-height: 56rpx;
+  margin-top: auto;
+  padding-top: 14rpx;
 }
 
 .record-action-row-static {
