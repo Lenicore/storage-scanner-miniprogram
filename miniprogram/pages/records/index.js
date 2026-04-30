@@ -118,6 +118,26 @@ function formatCodeTypeText(codeType) {
   return '其他';
 }
 
+function canViewAllByRole(role) {
+  return role === 'admin' || role === 'warehouse';
+}
+
+function canExportByRole(role) {
+  return role === 'admin';
+}
+
+function getRoleModeText(role) {
+  if (role === 'admin') {
+    return '管理员模式：查看全部记录';
+  }
+
+  if (role === 'warehouse') {
+    return '库管模式：查看全部记录';
+  }
+
+  return '';
+}
+
 function shouldShowCodeValue(codeType) {
   const value = codeType || '';
 
@@ -318,7 +338,7 @@ function formatCloudRecord(record) {
 
   return {
     id: record._id || `${Date.now()}`,
-    groupKey: categoryName,
+    groupKey: categoryId || categoryName,
     codeValue: record.code_value || '',
     codeType: codeType,
     showCodeValue: shouldShowCodeValue(codeType),
@@ -335,7 +355,8 @@ function formatCloudRecord(record) {
     qrCloudPath: qrCloudPath,
     scanTime: formatSecondTime(createdAt),
     createdAtMs: createdAt.getTime(),
-    createdAtValue: record.created_at || createdAt
+    createdAtValue: record.created_at || createdAt,
+    canOperate: !!record.can_operate
   };
 }
 
@@ -360,6 +381,7 @@ function cloneRecordWithSelection(record, isSelected) {
     scanTime: record.scanTime,
     createdAtMs: record.createdAtMs,
     createdAtValue: record.createdAtValue,
+    canOperate: !!record.canOperate,
     isSelected: !!isSelected
   };
 }
@@ -447,10 +469,16 @@ function buildRecordsView(records, selectedIds) {
     let selectedInGroupCount = 0;
     let itemIndex = 0;
     let allSelected = group.items.length > 0;
+    let operableCount = 0;
 
     for (itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
       const item = group.items[itemIndex];
       const isSelected = !!selectedLookup[item.id];
+      const canOperate = !!item.canOperate;
+
+      if (canOperate) {
+        operableCount += 1;
+      }
 
       if (isSelected) {
         selectedCount += 1;
@@ -463,11 +491,15 @@ function buildRecordsView(records, selectedIds) {
         } else if (item.status === 'archived') {
           selectedArchivedCount += 1;
         }
-      } else {
+      } else if (canOperate) {
         allSelected = false;
       }
 
       items.push(cloneRecordWithSelection(item, isSelected));
+    }
+
+    if (!operableCount) {
+      allSelected = false;
     }
 
     resultGroups.push({
@@ -608,6 +640,11 @@ Page({
     categoryActionCategoryName: '',
     categoryRenameValue: '',
     isCategoryActionProcessing: false,
+    canViewAllRecords: false,
+    roleModeText: '',
+    isExporting: false,
+    exportedQrFileIds: [],
+    exportedRecords: [],
     filteredRecordCount: 0,
     isAdmin: false,
     currentUserRole: 'user'
@@ -661,7 +698,8 @@ Page({
     this.renderRecordsState(formatCloudRecords(cache.records), [], {
       isAdmin: !!cache.is_admin,
       currentUserRole: cache.role || 'user',
-      userKeyword: cache.is_admin ? this.data.userKeyword : '',
+      canViewAllRecords: !!cache.can_view_all || canViewAllByRole(cache.role || 'user'),
+      userKeyword: canViewAllByRole(cache.role || 'user') ? this.data.userKeyword : '',
       isLoadingRecords: true
     });
   },
@@ -672,6 +710,7 @@ Page({
         records: payload.records || [],
         role: payload.role || 'user',
         is_admin: !!payload.is_admin,
+        can_view_all: !!payload.can_view_all,
         saved_at: Date.now()
       });
     } catch (error) {
@@ -681,10 +720,14 @@ Page({
 
   renderRecordsState: function (records, selectedIds, extraState) {
     const nextState = extraState || {};
+    const nextRole = nextState.currentUserRole || this.data.currentUserRole;
     const nextIsAdmin = typeof nextState.isAdmin === 'boolean' ? nextState.isAdmin : this.data.isAdmin;
+    const nextCanViewAll = typeof nextState.canViewAllRecords === 'boolean'
+      ? nextState.canViewAllRecords
+      : canViewAllByRole(nextRole);
     const categoryOptions = buildCategoryOptions(records);
     const filteredRecords = filterRecords(records, {
-      userKeyword: nextIsAdmin ? this.data.userKeyword : '',
+      userKeyword: nextCanViewAll ? this.data.userKeyword : '',
       statusFilter: this.data.statusFilter,
       categoryFilter: this.data.categoryFilter,
       currentCategoryId: this.data.currentCategoryViewId,
@@ -706,8 +749,12 @@ Page({
       selectedArchivedCount: view.selectedArchivedCount,
       filteredRecordCount: filteredRecords.length,
       isAdmin: nextIsAdmin,
-      currentUserRole: nextState.currentUserRole || this.data.currentUserRole,
-      userKeyword: typeof nextState.userKeyword === 'string' ? nextState.userKeyword : this.data.userKeyword,
+      currentUserRole: nextRole,
+      canViewAllRecords: nextCanViewAll,
+      roleModeText: getRoleModeText(nextRole),
+      userKeyword: typeof nextState.userKeyword === 'string'
+        ? nextState.userKeyword
+        : (nextCanViewAll ? this.data.userKeyword : ''),
       isLoadingRecords: typeof nextState.isLoadingRecords === 'boolean' ? nextState.isLoadingRecords : this.data.isLoadingRecords
     });
   },
@@ -887,6 +934,70 @@ Page({
     });
 
     this.refreshCurrentView();
+  },
+
+  buildExportFilters: function () {
+    return {
+      status_filter: this.data.statusFilter,
+      category_filter: this.data.categoryFilter,
+      current_category_id: this.data.currentCategoryViewId,
+      date_input: this.data.dateFilterInput,
+      user_keyword: this.data.canViewAllRecords ? this.data.userKeyword : '',
+      limit: RECORDS_FETCH_LIMIT
+    };
+  },
+
+  handleExportQrCodes: function () {
+    if (!canExportByRole(this.data.currentUserRole) || this.data.isExporting) {
+      return;
+    }
+
+    this.setData({
+      isExporting: true
+    });
+
+    wx.showLoading({
+      title: '导出中',
+      mask: true
+    });
+
+    wx.cloud.callFunction({
+      name: 'exportQrCodes',
+      data: this.buildExportFilters()
+    }).then((res) => {
+      const result = res.result || {};
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.message || '导出失败',
+          icon: 'none'
+        });
+        return false;
+      }
+
+      this.setData({
+        exportedQrFileIds: result.qr_file_ids || [],
+        exportedRecords: result.records || []
+      });
+
+      wx.showToast({
+        title: `已生成 ${result.qr_file_ids ? result.qr_file_ids.length : 0} 条`,
+        icon: 'success'
+      });
+      return true;
+    }).catch((error) => {
+      console.error('export qr codes failed:', error);
+      wx.showToast({
+        title: '导出失败',
+        icon: 'none'
+      });
+      return false;
+    }).finally(() => {
+      wx.hideLoading();
+      this.setData({
+        isExporting: false
+      });
+    });
   },
 
   handleOpenCategoryActions: function (event) {
@@ -1186,7 +1297,7 @@ Page({
     }
 
     for (index = 0; index < group.items.length; index += 1) {
-      if (!currentLookup[group.items[index].id]) {
+      if (group.items[index].canOperate && !currentLookup[group.items[index].id]) {
         nextSelectedIds.push(group.items[index].id);
       }
     }
@@ -1432,6 +1543,7 @@ Page({
       const list = result.records || [];
       const isAdmin = !!result.is_admin;
       const role = result.role || 'user';
+      const canViewAllRecords = !!result.can_view_all;
 
       if (result.success === false) {
         wx.showToast({
@@ -1454,7 +1566,8 @@ Page({
       this.renderRecordsState(records, nextSelectedIds, {
         isAdmin: isAdmin,
         currentUserRole: role,
-        userKeyword: isAdmin ? this.data.userKeyword : '',
+        canViewAllRecords: canViewAllRecords,
+        userKeyword: canViewAllRecords ? this.data.userKeyword : '',
         isLoadingRecords: false
       });
 

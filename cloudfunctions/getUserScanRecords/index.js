@@ -6,6 +6,18 @@ cloud.init({
 
 const db = cloud.database();
 
+function canViewAllRecords(role) {
+  return role === 'admin' || role === 'warehouse';
+}
+
+function canOperateRecord(role, recordUserId, openid) {
+  if (role === 'admin') {
+    return true;
+  }
+
+  return recordUserId === openid;
+}
+
 exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
@@ -36,10 +48,13 @@ exports.main = async (event) => {
       : null;
     const role = currentUser && currentUser.role ? currentUser.role : 'user';
     const isAdmin = role === 'admin';
+    const canViewAll = canViewAllRecords(role);
     const recordsQuery = db.collection('scan_records');
     let result;
+    let records = [];
+    let index = 0;
 
-    if (isAdmin) {
+    if (canViewAll) {
       result = await recordsQuery
         .orderBy('created_at', 'desc')
         .limit(limit)
@@ -54,11 +69,33 @@ exports.main = async (event) => {
         .get();
     }
 
+    for (index = 0; index < (result.data || []).length; index += 1) {
+      const item = result.data[index];
+
+      records.push({
+        _id: item._id || '',
+        code_value: item.code_value || '',
+        code_type: item.code_type || '',
+        qr_file_id: item.qr_file_id || '',
+        qr_cloud_path: item.qr_cloud_path || '',
+        category_id: item.category_id || '',
+        category_name: item.category_name || '',
+        user_id: item.user_id || '',
+        user_name: item.user_name || '',
+        user_avatar_url: item.user_avatar_url || '',
+        status: item.status || 'pending',
+        created_at: item.created_at || null,
+        updated_at: item.updated_at || null,
+        can_operate: canOperateRecord(role, item.user_id || '', openid)
+      });
+    }
+
     return {
       success: true,
-      records: result.data || [],
+      records: records,
       role: role,
       is_admin: isAdmin,
+      can_view_all: canViewAll,
       limit: limit
     };
   } catch (error) {
@@ -70,7 +107,8 @@ exports.main = async (event) => {
       message: '获取扫码记录失败',
       records: [],
       role: 'user',
-      is_admin: false
+      is_admin: false,
+      can_view_all: false
     };
   }
 };

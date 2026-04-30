@@ -1,6 +1,8 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/onboarding/index",
+    "pages/user-admin/index",
     "pages/records/index",
     "pages/record-viewer/index",
     "pages/profile/index"

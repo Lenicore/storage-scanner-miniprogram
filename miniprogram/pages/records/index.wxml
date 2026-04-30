@@ -4,8 +4,8 @@
     <text class="records-subtitle">按分类分组查看，组内按时间从新到旧。</text>
   </view>
 
-  <view wx:if="{{isAdmin}}" class="admin-banner">
-    <text class="admin-banner-text">管理员模式：查看全部记录</text>
+  <view wx:if="{{roleModeText}}" class="admin-banner">
+    <text class="admin-banner-text">{{roleModeText}}</text>
   </view>
 
   <view wx:if="{{currentCategoryViewId}}" class="current-category-card">
@@ -48,7 +48,7 @@
       </view>
     </view>
 
-    <view wx:if="{{isAdmin}}" class="search-box search-box-secondary">
+    <view wx:if="{{canViewAllRecords}}" class="search-box search-box-secondary">
       <input
         class="search-input"
         placeholder="筛选 user_id / user_name"
@@ -75,6 +75,28 @@
     >
       清空选择
     </button>
+    <button
+      wx:if="{{currentUserRole === 'admin'}}"
+      class="batch-clear-btn"
+      disabled="{{isExporting}}"
+      bindtap="handleExportQrCodes"
+    >
+      {{isExporting ? '导出中' : '导出二维码'}}
+    </button>
+  </view>
+
+  <view wx:if="{{currentUserRole === 'admin' && exportedQrFileIds.length}}" class="export-card">
+    <view class="export-card-head">
+      <text class="export-card-title">导出清单</text>
+      <text class="export-card-count">{{exportedQrFileIds.length}} 条</text>
+    </view>
+    <view class="export-card-list">
+      <view class="export-card-item" wx:for="{{exportedRecords}}" wx:key="_id">
+        <text class="export-card-code">{{item.code_value || '无内容'}}</text>
+        <text class="export-card-meta">{{item.category_name || '未分类'}} · {{item.status || 'pending'}}</text>
+        <text class="export-card-file">{{item.qr_file_id}}</text>
+      </view>
+    </view>
   </view>
 
   <text wx:if="{{isBatchMode}}" class="batch-mode-tip">勾选记录后，可在底部进行批量操作。</text>
@@ -109,6 +131,7 @@
             进入
           </text>
           <text
+            wx:if="{{!canViewAllRecords}}"
             class="cat-section-more-btn"
             data-category-id="{{item.items[0].categoryId}}"
             data-category-name="{{item.categoryName}}"
@@ -138,7 +161,7 @@
           <view class="record-cell-top">
             <view class="record-cell-main">
               <view
-                wx:if="{{isBatchMode}}"
+                wx:if="{{isBatchMode && record.canOperate}}"
                 class="record-check {{record.isSelected ? 'record-check-active' : ''}}"
                 data-id="{{record.id}}"
                 catchtap="handleToggleRecordSelect"
@@ -158,11 +181,11 @@
           <view class="record-cell-body">
             <view class="record-cell-meta">
               <text class="record-cell-type">{{record.codeTypeText}}</text>
-              <text wx:if="{{isAdmin}}" class="record-cell-user">{{record.userDisplayName}}</text>
+              <text wx:if="{{canViewAllRecords}}" class="record-cell-user">{{record.userDisplayName}}</text>
               <text class="record-cell-time">{{record.scanTime}}</text>
             </view>
 
-            <view wx:if="{{!isBatchMode && record.status === 'pending'}}" class="record-action-row">
+            <view wx:if="{{!isBatchMode && record.canOperate && record.status === 'pending'}}" class="record-action-row">
               <button
                 class="record-action-btn action-primary"
                 data-id="{{record.id}}"
@@ -174,7 +197,7 @@
               </button>
             </view>
 
-            <view wx:elif="{{!isBatchMode && record.status === 'marked'}}" class="record-action-row">
+            <view wx:elif="{{!isBatchMode && record.canOperate && record.status === 'marked'}}" class="record-action-row">
               <button
                 class="record-action-btn action-secondary"
                 data-id="{{record.id}}"
@@ -195,8 +218,12 @@
               </button>
             </view>
 
-            <view wx:elif="{{!isBatchMode}}" class="record-action-row record-action-row-static">
+            <view wx:elif="{{!isBatchMode && record.canOperate}}" class="record-action-row record-action-row-static">
               <text class="record-archived-text">已归档</text>
+            </view>
+
+            <view wx:elif="{{!isBatchMode}}" class="record-action-row record-action-row-static">
+              <text class="record-archived-text">仅可查看</text>
             </view>
           </view>
         </view>

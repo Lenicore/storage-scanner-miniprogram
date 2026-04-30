@@ -37,7 +37,7 @@
       </view>
       <text class="viewer-time">{{currentRecord.scanTime}}</text>
 
-      <view wx:if="{{currentRecord.status === 'pending'}}" class="viewer-action-row">
+      <view wx:if="{{currentRecord.canOperate && currentRecord.status === 'pending'}}" class="viewer-action-row">
         <button
           class="viewer-action-btn viewer-action-btn-primary"
           disabled="{{isProcessing}}"
@@ -47,7 +47,7 @@
         </button>
       </view>
 
-      <view wx:elif="{{currentRecord.status === 'marked'}}" class="viewer-action-row">
+      <view wx:elif="{{currentRecord.canOperate && currentRecord.status === 'marked'}}" class="viewer-action-row">
         <button
           class="viewer-action-btn viewer-action-btn-secondary"
           disabled="{{isProcessing}}"
@@ -64,8 +64,12 @@
         </button>
       </view>
 
-      <view wx:else class="viewer-action-row viewer-action-row-static">
+      <view wx:elif="{{currentRecord.canOperate}}" class="viewer-action-row viewer-action-row-static">
         <text class="viewer-archived-text">已归档</text>
+      </view>
+
+      <view wx:else class="viewer-action-row viewer-action-row-static">
+        <text class="viewer-archived-text">仅可查看</text>
       </view>
     </view>
   </view>

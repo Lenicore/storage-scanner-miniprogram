@@ -1,0 +1,40 @@
+<view class="user-admin-page">
+  <view class="user-admin-hero">
+    <text class="user-admin-title">用户管理</text>
+    <text class="user-admin-subtitle">管理员可查看用户列表并调整角色。</text>
+  </view>
+
+  <view wx:if="{{isLoadingUsers && !users.length}}" class="user-admin-card">
+    <text class="user-admin-empty">用户加载中...</text>
+  </view>
+
+  <view wx:elif="{{users.length}}" class="user-admin-list">
+    <view class="user-admin-card" wx:for="{{users}}" wx:key="openid">
+      <view class="user-admin-row">
+        <view class="user-admin-main">
+          <text class="user-admin-name">{{item.name}}</text>
+          <text class="user-admin-openid">{{item.openid}}</text>
+        </view>
+        <button
+          class="user-admin-role-btn"
+          data-openid="{{item.openid}}"
+          data-role="{{item.role}}"
+          data-name="{{item.name}}"
+          disabled="{{processingOpenid === item.openid}}"
+          bindtap="handleOpenRoleActions"
+        >
+          {{processingOpenid === item.openid ? '处理中' : '修改角色'}}
+        </button>
+      </view>
+
+      <view class="user-admin-meta">
+        <text class="user-admin-tag">角色：{{item.roleText}}</text>
+        <text class="user-admin-tag user-admin-tag-muted">状态：{{item.statusText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="user-admin-card">
+    <text class="user-admin-empty">暂无用户数据</text>
+  </view>
+</view>

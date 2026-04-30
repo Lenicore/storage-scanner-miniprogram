@@ -6,12 +6,31 @@ cloud.init({
 
 const db = cloud.database();
 
+async function getCurrentUserRole(openid) {
+  const userResult = await db.collection('users')
+    .where({
+      openid: openid
+    })
+    .limit(1)
+    .get();
+
+  if (!userResult.data || !userResult.data.length) {
+    return 'user';
+  }
+
+  return userResult.data[0].role || 'user';
+}
+
 exports.main = async (event) => {
   try {
     const wxContext = cloud.getWXContext();
     const openid = wxContext.OPENID || '';
     const recordId = event.record_id || '';
     const now = new Date();
+    const role = await getCurrentUserRole(openid);
+    const recordQuery = {
+      _id: recordId
+    };
 
     if (!openid) {
       return {
@@ -29,11 +48,12 @@ exports.main = async (event) => {
       };
     }
 
+    if (role !== 'admin') {
+      recordQuery.user_id = openid;
+    }
+
     const recordResult = await db.collection('scan_records')
-      .where({
-        _id: recordId,
-        user_id: openid
-      })
+      .where(recordQuery)
       .limit(1)
       .get();
 
@@ -68,6 +88,7 @@ exports.main = async (event) => {
       data: {
         user_id: openid,
         record_id: recordId,
+        operator_role: role,
         action: 'MARK_RECORD',
         from_status: 'pending',
         to_status: 'marked',

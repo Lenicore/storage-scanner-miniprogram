@@ -189,6 +189,7 @@
 
 .batch-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12rpx;
   margin-bottom: 14rpx;
 }
@@ -235,6 +236,70 @@
   color: #8e8e93;
   font-size: 24rpx;
   line-height: 1.6;
+}
+
+.export-card {
+  margin-bottom: 18rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06);
+}
+
+.export-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.export-card-title {
+  color: #111111;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.export-card-count {
+  color: #8e8e93;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.export-card-list {
+  margin-top: 16rpx;
+}
+
+.export-card-item + .export-card-item {
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.export-card-code {
+  display: block;
+  color: #111111;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.export-card-meta {
+  display: block;
+  margin-top: 6rpx;
+  color: #6b7280;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.export-card-file {
+  display: block;
+  margin-top: 6rpx;
+  color: #8e8e93;
+  font-size: 20rpx;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 .records-loading-card {

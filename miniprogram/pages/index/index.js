@@ -197,7 +197,13 @@ Page({
   },
 
   initPageData: function () {
-    this.ensureUserInfo().then(() => {
+    const app = getApp();
+
+    app.ensureOnboardingIfNeeded('pages/index/index').then((state) => {
+      if (!state || state.redirected) {
+        return;
+      }
+
       this.fetchCategories();
       this.fetchUserRecords();
     });
@@ -232,8 +238,7 @@ Page({
         return null;
       }
 
-      app.globalData.openid = userInfo.openid || '';
-      app.globalData.userInfo = userInfo;
+      app.setUserInfo(userInfo);
 
       return userInfo;
     }).catch((error) => {

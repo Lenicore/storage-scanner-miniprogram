@@ -39,6 +39,10 @@
     <button class="profile-save-btn" disabled="{{isSaving}}" bindtap="handleSaveProfile">
       {{isSaving ? '保存中' : '保存资料'}}
     </button>
+
+    <button wx:if="{{userInfo.canManageUsers}}" class="profile-manage-btn" bindtap="handleOpenUserAdmin">
+      用户管理
+    </button>
   </view>
 
   <view class="profile-card" wx:else>

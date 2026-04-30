@@ -99,7 +99,8 @@ function formatCloudRecord(record) {
     statusClassName: formatStatusClassName(status),
     qrFileId: record.qr_file_id || '',
     scanTime: formatSecondTime(createdAt),
-    createdAtMs: createdAt.getTime()
+    createdAtMs: createdAt.getTime(),
+    canOperate: !!record.can_operate
   };
 }
 
@@ -301,7 +302,8 @@ Page({
         statusClassName: formatStatusClassName(nextStatus),
         qrFileId: currentRecord.qrFileId,
         scanTime: currentRecord.scanTime,
-        createdAtMs: currentRecord.createdAtMs
+        createdAtMs: currentRecord.createdAtMs,
+        canOperate: currentRecord.canOperate
       };
 
       this.setData({

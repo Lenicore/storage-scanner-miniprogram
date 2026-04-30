@@ -1,0 +1,9 @@
+{
+  "name": "exportQrCodes",
+  "version": "1.0.0",
+  "description": "Export filtered qr code list for admin",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.4.0"
+  }
+}

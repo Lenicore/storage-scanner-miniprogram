@@ -1,0 +1,37 @@
+<view class="onboarding-page">
+  <view class="onboarding-hero">
+    <text class="onboarding-title">完善信息</text>
+    <text class="onboarding-subtitle">首次使用前，先设置头像和昵称，方便后续识别。</text>
+  </view>
+
+  <view class="onboarding-card" wx:if="{{userInfo}}">
+    <view class="onboarding-avatar-section">
+      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="handleChooseAvatar">
+        <image wx:if="{{formAvatarUrl}}" class="onboarding-avatar-image" src="{{formAvatarUrl}}" mode="aspectFill" />
+        <view wx:else class="onboarding-avatar-placeholder">
+          <text class="onboarding-avatar-placeholder-text">选择头像</text>
+        </view>
+      </button>
+      <text class="onboarding-avatar-tip">点击头像选择微信头像</text>
+    </view>
+
+    <view class="onboarding-item">
+      <text class="onboarding-label">昵称</text>
+      <input
+        class="onboarding-input"
+        type="nickname"
+        placeholder="请输入昵称"
+        value="{{formName}}"
+        bindinput="handleNameInput"
+      />
+    </view>
+
+    <button class="onboarding-submit-btn" disabled="{{isSaving}}" bindtap="handleStartUsing">
+      {{isSaving ? '保存中' : '开始使用'}}
+    </button>
+  </view>
+
+  <view class="onboarding-card" wx:else>
+    <text class="onboarding-empty">正在初始化用户信息...</text>
+  </view>
+</view>

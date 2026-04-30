@@ -1,41 +1,12 @@
-function formatRoleText(role) {
-  if (role === 'admin') {
-    return '管理员';
-  }
-
-  if (role === 'warehouse') {
-    return '库管';
-  }
-
-  return '普通员工';
-}
-
-function formatStatusText(status) {
-  if (status === 'pending') {
-    return '待审核';
-  }
-
-  if (status === 'disabled') {
-    return '已禁用';
-  }
-
-  return '正常';
-}
-
 function buildUserInfo(userInfo) {
   const source = userInfo || {};
-  const role = source.role || 'user';
-  const status = source.status || 'active';
+  const rawName = source.name || '';
+  const name = rawName === '未命名用户' ? '' : rawName;
 
   return {
     openid: source.openid || '',
-    name: source.name || '未命名用户',
-    avatar_url: source.avatar_url || '',
-    role: role,
-    roleText: formatRoleText(role),
-    status: status,
-    statusText: formatStatusText(status),
-    canManageUsers: role === 'admin'
+    name: name,
+    avatar_url: source.avatar_url || ''
   };
 }
 
@@ -52,18 +23,17 @@ Page({
     this.initUserInfo();
   },
 
-  onShow: function () {
-    if (this.data.userInfo) {
-      return;
-    }
-
-    this.initUserInfo();
-  },
-
   initUserInfo: function () {
     const app = getApp();
 
     if (app.globalData && app.globalData.userInfo) {
+      if (!app.isProfileIncomplete(app.globalData.userInfo)) {
+        wx.reLaunch({
+          url: '/pages/index/index'
+        });
+        return Promise.resolve(app.globalData.userInfo);
+      }
+
       this.applyUserInfo(app.globalData.userInfo);
       return Promise.resolve(app.globalData.userInfo);
     }
@@ -72,6 +42,8 @@ Page({
   },
 
   fetchUserInfo: function () {
+    const app = getApp();
+
     if (this.data.isLoadingUser) {
       return Promise.resolve(null);
     }
@@ -80,31 +52,24 @@ Page({
       isLoadingUser: true
     });
 
-    return wx.cloud.callFunction({
-      name: 'login'
-    }).then((res) => {
-      const result = res.result || {};
-      const userInfo = result.userInfo || {};
-      const app = getApp();
-
-      if (!result.success) {
+    return app.fetchLoginUserInfo().then((userInfo) => {
+      if (!userInfo) {
         wx.showToast({
-          title: result.message || '用户信息加载失败',
+          title: '用户信息加载失败',
           icon: 'none'
         });
         return null;
       }
 
-      app.setUserInfo(userInfo);
+      if (!app.isProfileIncomplete(userInfo)) {
+        wx.reLaunch({
+          url: '/pages/index/index'
+        });
+        return userInfo;
+      }
+
       this.applyUserInfo(userInfo);
       return userInfo;
-    }).catch((error) => {
-      console.error('fetch user info failed:', error);
-      wx.showToast({
-        title: '用户信息加载失败',
-        icon: 'none'
-      });
-      return null;
     }).finally(() => {
       this.setData({
         isLoadingUser: false
@@ -170,11 +135,28 @@ Page({
     return Promise.resolve(avatarUrl);
   },
 
-  handleSaveProfile: function () {
+  handleStartUsing: function () {
+    const app = getApp();
     const userInfo = this.data.userInfo;
     const name = (this.data.formName || '').trim();
 
     if (!userInfo || this.data.isSaving) {
+      return;
+    }
+
+    if (!name) {
+      wx.showToast({
+        title: '请输入昵称',
+        icon: 'none'
+      });
+      return;
+    }
+
+    if (name === '未命名用户') {
+      wx.showToast({
+        title: '请使用其他昵称',
+        icon: 'none'
+      });
       return;
     }
 
@@ -191,14 +173,13 @@ Page({
       return wx.cloud.callFunction({
         name: 'updateUserProfile',
         data: {
-          name: name || '未命名用户',
+          name: name,
           avatar_url: avatarUrl
         }
       });
     }).then((res) => {
       const result = res.result || {};
       const nextUserInfo = result.userInfo || {};
-      const app = getApp();
 
       if (!result.success) {
         wx.showToast({
@@ -209,14 +190,12 @@ Page({
       }
 
       app.setUserInfo(nextUserInfo);
-      this.applyUserInfo(nextUserInfo);
 
-      wx.showToast({
-        title: '保存成功',
-        icon: 'success'
+      wx.reLaunch({
+        url: '/pages/index/index'
       });
     }).catch((error) => {
-      console.error('save profile failed:', error);
+      console.error('save onboarding profile failed:', error);
       wx.showToast({
         title: '保存失败',
         icon: 'none'
@@ -226,16 +205,6 @@ Page({
       this.setData({
         isSaving: false
       });
-    });
-  },
-
-  handleOpenUserAdmin: function () {
-    if (!this.data.userInfo || !this.data.userInfo.canManageUsers) {
-      return;
-    }
-
-    wx.navigateTo({
-      url: '/pages/user-admin/index'
     });
   }
 });
