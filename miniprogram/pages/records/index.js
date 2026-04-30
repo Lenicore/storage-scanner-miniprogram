@@ -39,12 +39,55 @@ function formatCodeTypeText(codeType) {
   return '其他';
 }
 
+function formatStatusText(status) {
+  const value = status || 'pending';
+
+  if (value === 'marked') {
+    return '已标记';
+  }
+
+  if (value === 'archived') {
+    return '已归档';
+  }
+
+  return '未处理';
+}
+
+function formatStatusClassName(status) {
+  const value = status || 'pending';
+
+  if (value === 'marked') {
+    return 'status-marked';
+  }
+
+  if (value === 'archived') {
+    return 'status-archived';
+  }
+
+  return 'status-pending';
+}
+
+function buildIdLookup(list) {
+  const source = Array.isArray(list) ? list : [];
+  const result = {};
+  let index = 0;
+
+  for (index = 0; index < source.length; index += 1) {
+    if (source[index]) {
+      result[source[index]] = true;
+    }
+  }
+
+  return result;
+}
+
 function formatCloudRecord(record) {
   const createdAt = normalizeDate(record.created_at) || new Date();
   const rawName = record.category_name || '';
   const trimmed = typeof rawName === 'string' ? rawName.trim() : '';
   const categoryName = trimmed ? trimmed : '未分类';
   const codeType = record.code_type || 'BAR_CODE';
+  const status = record.status || 'pending';
 
   return {
     id: record._id || `${Date.now()}`,
@@ -52,9 +95,29 @@ function formatCloudRecord(record) {
     codeValue: record.code_value || '',
     codeType: codeType,
     codeTypeText: formatCodeTypeText(codeType),
+    status: status,
+    statusText: formatStatusText(status),
+    statusClassName: formatStatusClassName(status),
     categoryName: categoryName,
     scanTime: formatSecondTime(createdAt),
     createdAtMs: createdAt.getTime()
+  };
+}
+
+function cloneRecordWithSelection(record, isSelected) {
+  return {
+    id: record.id,
+    groupKey: record.groupKey,
+    codeValue: record.codeValue,
+    codeType: record.codeType,
+    codeTypeText: record.codeTypeText,
+    status: record.status,
+    statusText: record.statusText,
+    statusClassName: record.statusClassName,
+    categoryName: record.categoryName,
+    scanTime: record.scanTime,
+    createdAtMs: record.createdAtMs,
+    isSelected: !!isSelected
   };
 }
 
@@ -106,10 +169,167 @@ function groupRecordsByCategoryName(records) {
   return groups;
 }
 
+function sanitizeSelectedIds(records, selectedIds) {
+  const recordLookup = {};
+  const source = Array.isArray(selectedIds) ? selectedIds : [];
+  const result = [];
+  let index = 0;
+
+  for (index = 0; index < records.length; index += 1) {
+    recordLookup[records[index].id] = true;
+  }
+
+  for (index = 0; index < source.length; index += 1) {
+    if (recordLookup[source[index]]) {
+      result.push(source[index]);
+    }
+  }
+
+  return result;
+}
+
+function buildRecordsView(records, selectedIds) {
+  const groups = groupRecordsByCategoryName(records);
+  const selectedLookup = buildIdLookup(selectedIds);
+  const resultGroups = [];
+  let selectedCount = 0;
+  let selectedPendingCount = 0;
+  let selectedMarkedCount = 0;
+  let selectedArchivedCount = 0;
+  let groupIndex = 0;
+
+  for (groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+    const group = groups[groupIndex];
+    const items = [];
+    let selectedInGroupCount = 0;
+    let itemIndex = 0;
+    let allSelected = group.items.length > 0;
+
+    for (itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
+      const item = group.items[itemIndex];
+      const isSelected = !!selectedLookup[item.id];
+
+      if (isSelected) {
+        selectedCount += 1;
+        selectedInGroupCount += 1;
+
+        if (item.status === 'pending') {
+          selectedPendingCount += 1;
+        } else if (item.status === 'marked') {
+          selectedMarkedCount += 1;
+        } else if (item.status === 'archived') {
+          selectedArchivedCount += 1;
+        }
+      } else {
+        allSelected = false;
+      }
+
+      items.push(cloneRecordWithSelection(item, isSelected));
+    }
+
+    resultGroups.push({
+      id: group.id,
+      categoryName: group.categoryName,
+      count: group.count,
+      latestMs: group.latestMs,
+      selectedCount: selectedInGroupCount,
+      allSelected: allSelected,
+      items: items
+    });
+  }
+
+  return {
+    groups: resultGroups,
+    selectedCount: selectedCount,
+    selectedPendingCount: selectedPendingCount,
+    selectedMarkedCount: selectedMarkedCount,
+    selectedArchivedCount: selectedArchivedCount
+  };
+}
+
+function findGroupById(groups, groupId) {
+  let index = 0;
+
+  for (index = 0; index < groups.length; index += 1) {
+    if (groups[index].id === groupId) {
+      return groups[index];
+    }
+  }
+
+  return null;
+}
+
+function getEligibleSelectedRecordIds(records, selectedIds, action) {
+  const selectedLookup = buildIdLookup(selectedIds);
+  const result = [];
+  let expectedStatus = '';
+  let index = 0;
+
+  if (action === 'mark') {
+    expectedStatus = 'pending';
+  } else if (action === 'undo' || action === 'archive') {
+    expectedStatus = 'marked';
+  }
+
+  if (!expectedStatus) {
+    return result;
+  }
+
+  for (index = 0; index < records.length; index += 1) {
+    if (selectedLookup[records[index].id] && records[index].status === expectedStatus) {
+      result.push(records[index].id);
+    }
+  }
+
+  return result;
+}
+
+function getBatchActionConfig(action) {
+  if (action === 'mark') {
+    return {
+      label: '标记',
+      modalTitle: '批量标记',
+      loadingText: '批量标记中',
+      summaryTitle: '批量标记完成'
+    };
+  }
+
+  if (action === 'undo') {
+    return {
+      label: '撤回',
+      modalTitle: '批量撤回',
+      loadingText: '批量撤回中',
+      summaryTitle: '批量撤回完成'
+    };
+  }
+
+  if (action === 'archive') {
+    return {
+      label: '归档',
+      modalTitle: '批量归档',
+      loadingText: '批量归档中',
+      summaryTitle: '批量归档完成'
+    };
+  }
+
+  return null;
+}
+
 Page({
   data: {
+    allRecords: [],
     categoryGroups: [],
-    isLoadingRecords: false
+    isLoadingRecords: false,
+    processingRecordId: '',
+    processingAction: '',
+    isBatchMode: false,
+    selectedRecordIds: [],
+    selectedCount: 0,
+    selectedPendingCount: 0,
+    selectedMarkedCount: 0,
+    selectedArchivedCount: 0,
+    isBatchProcessing: false,
+    batchProcessingAction: ''
   },
 
   onLoad: function () {
@@ -123,7 +343,327 @@ Page({
     return this.fetchRecords();
   },
 
-  fetchRecords: function () {
+  applyRecordsView: function (records, selectedIds) {
+    const safeSelectedIds = sanitizeSelectedIds(records, selectedIds);
+    const view = buildRecordsView(records, safeSelectedIds);
+
+    this.setData({
+      allRecords: records,
+      categoryGroups: view.groups,
+      selectedRecordIds: safeSelectedIds,
+      selectedCount: view.selectedCount,
+      selectedPendingCount: view.selectedPendingCount,
+      selectedMarkedCount: view.selectedMarkedCount,
+      selectedArchivedCount: view.selectedArchivedCount
+    });
+  },
+
+  handleToggleBatchMode: function () {
+    const nextBatchMode = !this.data.isBatchMode;
+
+    this.setData({
+      isBatchMode: nextBatchMode
+    });
+
+    this.applyRecordsView(this.data.allRecords, []);
+  },
+
+  handleClearSelection: function () {
+    if (!this.data.isBatchMode) {
+      return;
+    }
+
+    this.applyRecordsView(this.data.allRecords, []);
+  },
+
+  handleToggleRecordSelect: function (event) {
+    const recordId = event.currentTarget.dataset.id || '';
+    const result = this.data.selectedRecordIds.slice();
+    let index = 0;
+    let foundIndex = -1;
+
+    if (!this.data.isBatchMode || !recordId) {
+      return;
+    }
+
+    for (index = 0; index < result.length; index += 1) {
+      if (result[index] === recordId) {
+        foundIndex = index;
+        break;
+      }
+    }
+
+    if (foundIndex > -1) {
+      result.splice(foundIndex, 1);
+    } else {
+      result.push(recordId);
+    }
+
+    this.applyRecordsView(this.data.allRecords, result);
+  },
+
+  handleToggleCategorySelect: function (event) {
+    const groupId = event.currentTarget.dataset.id || '';
+    const group = findGroupById(this.data.categoryGroups, groupId);
+    const nextSelectedIds = this.data.selectedRecordIds.slice();
+    const currentLookup = buildIdLookup(nextSelectedIds);
+    let index = 0;
+
+    if (!this.data.isBatchMode || !group) {
+      return;
+    }
+
+    if (group.allSelected) {
+      const nextList = [];
+
+      for (index = 0; index < nextSelectedIds.length; index += 1) {
+        let shouldKeep = true;
+        let itemIndex = 0;
+
+        for (itemIndex = 0; itemIndex < group.items.length; itemIndex += 1) {
+          if (group.items[itemIndex].id === nextSelectedIds[index]) {
+            shouldKeep = false;
+            break;
+          }
+        }
+
+        if (shouldKeep) {
+          nextList.push(nextSelectedIds[index]);
+        }
+      }
+
+      this.applyRecordsView(this.data.allRecords, nextList);
+      return;
+    }
+
+    for (index = 0; index < group.items.length; index += 1) {
+      if (!currentLookup[group.items[index].id]) {
+        nextSelectedIds.push(group.items[index].id);
+      }
+    }
+
+    this.applyRecordsView(this.data.allRecords, nextSelectedIds);
+  },
+
+  handleBatchAction: function (event) {
+    const action = event.currentTarget.dataset.action || '';
+    const actionConfig = getBatchActionConfig(action);
+    const eligibleIds = getEligibleSelectedRecordIds(this.data.allRecords, this.data.selectedRecordIds, action);
+    const selectedCount = this.data.selectedCount;
+    const eligibleCount = eligibleIds.length;
+    let content = '';
+
+    if (!actionConfig) {
+      return;
+    }
+
+    if (!eligibleCount) {
+      wx.showToast({
+        title: '没有可处理记录',
+        icon: 'none'
+      });
+      return;
+    }
+
+    content = `确认${actionConfig.label}${eligibleCount}条记录？`;
+
+    if (eligibleCount !== selectedCount) {
+      content = `${content}\n当前已选${selectedCount}条，仅处理符合条件的${eligibleCount}条。`;
+    }
+
+    wx.showModal({
+      title: actionConfig.modalTitle,
+      content: content,
+      success: (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        this.runBatchAction(action, eligibleIds, actionConfig);
+      }
+    });
+  },
+
+  runBatchAction: function (action, recordIds, actionConfig) {
+    if (this.data.isBatchProcessing) {
+      return Promise.resolve(false);
+    }
+
+    this.setData({
+      isBatchProcessing: true,
+      batchProcessingAction: action
+    });
+
+    wx.showLoading({
+      title: actionConfig.loadingText,
+      mask: true
+    });
+
+    return wx.cloud.callFunction({
+      name: 'batchUpdateRecords',
+      data: {
+        record_ids: recordIds,
+        action: action
+      }
+    }).then((res) => {
+      const result = res.result || {};
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.message || '批量处理失败',
+          icon: 'none'
+        });
+        return false;
+      }
+
+      return this.fetchRecords([]).then(() => {
+        wx.showModal({
+          title: actionConfig.summaryTitle,
+          content: `成功 ${result.success_count || 0} 条，失败 ${result.failed_count || 0} 条`,
+          showCancel: false
+        });
+        return true;
+      });
+    }).catch((error) => {
+      console.error('batch update records failed:', error);
+      wx.showToast({
+        title: '批量处理失败',
+        icon: 'none'
+      });
+      return false;
+    }).finally(() => {
+      wx.hideLoading();
+      this.setData({
+        isBatchProcessing: false,
+        batchProcessingAction: ''
+      });
+    });
+  },
+
+  runRecordAction: function (options) {
+    const recordId = options.recordId || '';
+    const functionName = options.functionName || '';
+    const loadingText = options.loadingText || '处理中';
+    const successText = options.successText || '操作成功';
+
+    if (!recordId || !functionName) {
+      return Promise.resolve(false);
+    }
+
+    if (this.data.processingRecordId) {
+      return Promise.resolve(false);
+    }
+
+    this.setData({
+      processingRecordId: recordId,
+      processingAction: functionName
+    });
+
+    wx.showLoading({
+      title: loadingText,
+      mask: true
+    });
+
+    return wx.cloud.callFunction({
+      name: functionName,
+      data: {
+        record_id: recordId
+      }
+    }).then((res) => {
+      const result = res.result || {};
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.message || '操作失败',
+          icon: 'none'
+        });
+        return false;
+      }
+
+      wx.showToast({
+        title: successText,
+        icon: 'success'
+      });
+
+      return this.fetchRecords().then(() => {
+        return true;
+      });
+    }).catch((error) => {
+      console.error('record action failed:', error);
+      wx.showToast({
+        title: '操作失败',
+        icon: 'none'
+      });
+      return false;
+    }).finally(() => {
+      wx.hideLoading();
+      this.setData({
+        processingRecordId: '',
+        processingAction: ''
+      });
+    });
+  },
+
+  confirmRecordAction: function (options) {
+    const title = options.title || '确认操作';
+    const content = options.content || '';
+
+    wx.showModal({
+      title: title,
+      content: content,
+      success: (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        this.runRecordAction(options);
+      }
+    });
+  },
+
+  handleMarkRecord: function (event) {
+    const recordId = event.currentTarget.dataset.id || '';
+    const codeValue = event.currentTarget.dataset.code || '';
+
+    this.confirmRecordAction({
+      recordId: recordId,
+      functionName: 'markRecord',
+      title: '确认标记',
+      content: `确认将该记录标记为已标记？\n${codeValue}`,
+      loadingText: '标记中',
+      successText: '标记成功'
+    });
+  },
+
+  handleUndoMarkRecord: function (event) {
+    const recordId = event.currentTarget.dataset.id || '';
+    const codeValue = event.currentTarget.dataset.code || '';
+
+    this.confirmRecordAction({
+      recordId: recordId,
+      functionName: 'undoMarkRecord',
+      title: '确认撤回',
+      content: `确认撤回该记录的标记？\n${codeValue}`,
+      loadingText: '撤回中',
+      successText: '撤回成功'
+    });
+  },
+
+  handleArchiveRecord: function (event) {
+    const recordId = event.currentTarget.dataset.id || '';
+    const codeValue = event.currentTarget.dataset.code || '';
+
+    this.confirmRecordAction({
+      recordId: recordId,
+      functionName: 'archiveRecord',
+      title: '确认归档',
+      content: `确认归档该记录？\n${codeValue}`,
+      loadingText: '归档中',
+      successText: '归档成功'
+    });
+  },
+
+  fetchRecords: function (selectedIds) {
     if (this.data.isLoadingRecords) {
       return Promise.resolve([]);
     }
@@ -146,13 +686,13 @@ Page({
       }
 
       const records = list.map((item) => formatCloudRecord(item));
-      const categoryGroups = groupRecordsByCategoryName(records);
+      const nextSelectedIds = typeof selectedIds === 'undefined'
+        ? this.data.selectedRecordIds
+        : selectedIds;
 
-      this.setData({
-        categoryGroups: categoryGroups
-      });
+      this.applyRecordsView(records, nextSelectedIds);
 
-      return categoryGroups;
+      return records;
     }).catch((error) => {
       console.error('fetch records failed:', error);
       wx.showToast({

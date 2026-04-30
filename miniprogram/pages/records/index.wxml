@@ -4,6 +4,25 @@
     <text class="records-subtitle">按分类分组查看，组内按时间从新到旧。</text>
   </view>
 
+  <view class="batch-toolbar">
+    <button
+      class="batch-toggle-btn {{isBatchMode ? 'batch-toggle-btn-active' : ''}}"
+      bindtap="handleToggleBatchMode"
+    >
+      {{isBatchMode ? '退出批量' : '批量管理'}}
+    </button>
+    <button
+      wx:if="{{isBatchMode}}"
+      class="batch-clear-btn"
+      disabled="{{!selectedCount || isBatchProcessing}}"
+      bindtap="handleClearSelection"
+    >
+      清空选择
+    </button>
+  </view>
+
+  <text wx:if="{{isBatchMode}}" class="batch-mode-tip">勾选记录后，可在底部进行批量操作。</text>
+
   <view wx:if="{{isLoadingRecords}}" class="records-loading-card">
     <text class="records-empty-text">记录加载中...</text>
   </view>
@@ -11,15 +30,73 @@
   <block wx:elif="{{categoryGroups.length}}">
     <view class="cat-section" wx:for="{{categoryGroups}}" wx:key="id">
       <view class="cat-section-head">
-        <text class="cat-section-title">{{item.categoryName}}</text>
-        <text class="cat-section-count">{{item.count}} 条</text>
+        <view class="cat-section-head-main">
+          <text class="cat-section-title">{{item.categoryName}}</text>
+          <text class="cat-section-count">{{item.count}} 条</text>
+        </view>
+        <view wx:if="{{isBatchMode}}" class="cat-section-head-action">
+          <text class="cat-section-selected">{{item.selectedCount}} 已选</text>
+          <text class="cat-section-toggle" data-id="{{item.id}}" bindtap="handleToggleCategorySelect">
+            {{item.allSelected ? '取消本组' : '全选当前分类'}}
+          </text>
+        </view>
       </view>
 
       <view class="record-cell-grid">
         <view class="record-cell" wx:for="{{item.items}}" wx:for-item="record" wx:key="id">
-          <text class="record-cell-code">{{record.codeValue}}</text>
+          <view class="record-cell-top">
+            <view class="record-cell-main">
+              <view
+                wx:if="{{isBatchMode}}"
+                class="record-check {{record.isSelected ? 'record-check-active' : ''}}"
+                data-id="{{record.id}}"
+                bindtap="handleToggleRecordSelect"
+              >
+                <text class="record-check-icon">{{record.isSelected ? '✓' : ''}}</text>
+              </view>
+              <text class="record-cell-code">{{record.codeValue}}</text>
+            </view>
+            <text class="record-status-tag {{record.statusClassName}}">{{record.statusText}}</text>
+          </view>
           <text class="record-cell-type">{{record.codeTypeText}}</text>
           <text class="record-cell-time">{{record.scanTime}}</text>
+
+          <view wx:if="{{!isBatchMode && record.status === 'pending'}}" class="record-action-row">
+            <button
+              class="record-action-btn action-primary"
+              data-id="{{record.id}}"
+              data-code="{{record.codeValue}}"
+              disabled="{{processingRecordId === record.id}}"
+              bindtap="handleMarkRecord"
+            >
+              {{processingRecordId === record.id ? '处理中' : '标记'}}
+            </button>
+          </view>
+
+          <view wx:elif="{{!isBatchMode && record.status === 'marked'}}" class="record-action-row">
+            <button
+              class="record-action-btn action-secondary"
+              data-id="{{record.id}}"
+              data-code="{{record.codeValue}}"
+              disabled="{{processingRecordId === record.id}}"
+              bindtap="handleUndoMarkRecord"
+            >
+              {{processingRecordId === record.id ? '处理中' : '撤回'}}
+            </button>
+            <button
+              class="record-action-btn action-primary"
+              data-id="{{record.id}}"
+              data-code="{{record.codeValue}}"
+              disabled="{{processingRecordId === record.id}}"
+              bindtap="handleArchiveRecord"
+            >
+              {{processingRecordId === record.id ? '处理中' : '归档'}}
+            </button>
+          </view>
+
+          <view wx:elif="{{!isBatchMode}}" class="record-action-row record-action-row-static">
+            <text class="record-archived-text">已归档</text>
+          </view>
         </view>
       </view>
     </view>
@@ -27,5 +104,54 @@
 
   <view wx:else class="records-loading-card">
     <text class="records-empty-text">暂无云端记录，先回首页扫一个码吧。</text>
+  </view>
+
+  <view wx:if="{{isBatchMode}}" class="batch-footer-space"></view>
+
+  <view wx:if="{{isBatchMode}}" class="batch-footer">
+    <view class="batch-footer-summary">
+      <text class="batch-footer-count">已选择 {{selectedCount}} 条</text>
+      <text class="batch-footer-desc">底部仅显示当前可执行操作</text>
+    </view>
+
+    <view class="batch-footer-actions">
+      <button
+        wx:if="{{selectedPendingCount > 0}}"
+        class="batch-footer-btn batch-footer-btn-primary"
+        disabled="{{isBatchProcessing}}"
+        data-action="mark"
+        bindtap="handleBatchAction"
+      >
+        {{isBatchProcessing && batchProcessingAction === 'mark' ? '处理中' : '标记'}}
+      </button>
+
+      <button
+        wx:if="{{selectedMarkedCount > 0}}"
+        class="batch-footer-btn batch-footer-btn-secondary"
+        disabled="{{isBatchProcessing}}"
+        data-action="undo"
+        bindtap="handleBatchAction"
+      >
+        {{isBatchProcessing && batchProcessingAction === 'undo' ? '处理中' : '撤回'}}
+      </button>
+
+      <button
+        wx:if="{{selectedMarkedCount > 0}}"
+        class="batch-footer-btn batch-footer-btn-primary"
+        disabled="{{isBatchProcessing}}"
+        data-action="archive"
+        bindtap="handleBatchAction"
+      >
+        {{isBatchProcessing && batchProcessingAction === 'archive' ? '处理中' : '归档'}}
+      </button>
+
+      <text wx:if="{{selectedCount === 0}}" class="batch-footer-empty">请选择记录</text>
+      <text
+        wx:elif="{{selectedPendingCount === 0 && selectedMarkedCount === 0}}"
+        class="batch-footer-empty"
+      >
+        所选记录当前不可批量操作
+      </text>
+    </view>
   </view>
 </view>
