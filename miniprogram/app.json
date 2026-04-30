@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/records/index",
+    "pages/record-viewer/index",
     "pages/profile/index"
   ],
   "window": {

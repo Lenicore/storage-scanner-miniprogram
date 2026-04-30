@@ -1,0 +1,76 @@
+<view class="viewer-page">
+  <view class="viewer-head">
+    <text class="viewer-category">{{categoryName || '二维码浏览'}}</text>
+    <text class="viewer-index" wx:if="{{totalCount}}">{{currentIndex + 1}} / {{totalCount}}</text>
+  </view>
+
+  <view wx:if="{{isLoading}}" class="viewer-empty-card">
+    <text class="viewer-empty-text">记录加载中...</text>
+  </view>
+
+  <view wx:elif="{{currentRecord}}" class="viewer-body">
+    <view class="viewer-swiper-card">
+      <swiper
+        class="viewer-swiper"
+        current="{{currentIndex}}"
+        circular="false"
+        previous-margin="0"
+        next-margin="0"
+        bindchange="handleSwiperChange"
+      >
+        <swiper-item wx:for="{{records}}" wx:key="id">
+          <view class="viewer-slide">
+            <image wx:if="{{item.qrFileId}}" class="viewer-qr-image" src="{{item.qrFileId}}" mode="aspectFit" />
+            <view wx:else class="viewer-qr-placeholder">
+              <text class="viewer-qr-placeholder-text">暂无二维码图片</text>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+
+    <view class="viewer-info-card">
+      <text class="viewer-code">{{currentRecord.codeValue}}</text>
+      <view class="viewer-meta-row">
+        <text class="viewer-type">{{currentRecord.codeTypeText}}</text>
+        <text class="viewer-status {{currentRecord.statusClassName}}">{{currentRecord.statusText}}</text>
+      </view>
+      <text class="viewer-time">{{currentRecord.scanTime}}</text>
+
+      <view wx:if="{{currentRecord.status === 'pending'}}" class="viewer-action-row">
+        <button
+          class="viewer-action-btn viewer-action-btn-primary"
+          disabled="{{isProcessing}}"
+          bindtap="handleMarkRecord"
+        >
+          {{isProcessing && processingAction === 'markRecord' ? '处理中' : '标记'}}
+        </button>
+      </view>
+
+      <view wx:elif="{{currentRecord.status === 'marked'}}" class="viewer-action-row">
+        <button
+          class="viewer-action-btn viewer-action-btn-secondary"
+          disabled="{{isProcessing}}"
+          bindtap="handleUndoMarkRecord"
+        >
+          {{isProcessing && processingAction === 'undoMarkRecord' ? '处理中' : '撤回'}}
+        </button>
+        <button
+          class="viewer-action-btn viewer-action-btn-primary"
+          disabled="{{isProcessing}}"
+          bindtap="handleArchiveRecord"
+        >
+          {{isProcessing && processingAction === 'archiveRecord' ? '处理中' : '归档'}}
+        </button>
+      </view>
+
+      <view wx:else class="viewer-action-row viewer-action-row-static">
+        <text class="viewer-archived-text">已归档</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="viewer-empty-card">
+    <text class="viewer-empty-text">当前分类暂无可浏览记录</text>
+  </view>
+</view>

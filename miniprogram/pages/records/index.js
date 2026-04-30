@@ -553,6 +553,19 @@ Page({
     this.applyRecordsView(this.data.allRecords, []);
   },
 
+  handleOpenViewer: function (event) {
+    const recordId = event.currentTarget.dataset.id || '';
+    const categoryId = event.currentTarget.dataset.categoryId || '';
+
+    if (this.data.isBatchMode || !recordId || !categoryId) {
+      return;
+    }
+
+    wx.navigateTo({
+      url: `/pages/record-viewer/index?record_id=${encodeURIComponent(recordId)}&category_id=${encodeURIComponent(categoryId)}`
+    });
+  },
+
   handleToggleRecordSelect: function (event) {
     const recordId = event.currentTarget.dataset.id || '';
     const result = this.data.selectedRecordIds.slice();

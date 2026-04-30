@@ -122,14 +122,22 @@
       </view>
 
       <view class="record-cell-grid">
-        <view class="record-cell" wx:for="{{item.items}}" wx:for-item="record" wx:key="id">
+        <view
+          class="record-cell"
+          wx:for="{{item.items}}"
+          wx:for-item="record"
+          wx:key="id"
+          data-id="{{record.id}}"
+          data-category-id="{{record.categoryId}}"
+          bindtap="handleOpenViewer"
+        >
           <view class="record-cell-top">
             <view class="record-cell-main">
               <view
                 wx:if="{{isBatchMode}}"
                 class="record-check {{record.isSelected ? 'record-check-active' : ''}}"
                 data-id="{{record.id}}"
-                bindtap="handleToggleRecordSelect"
+                catchtap="handleToggleRecordSelect"
               >
                 <text class="record-check-icon">{{record.isSelected ? '✓' : ''}}</text>
               </view>
@@ -153,7 +161,7 @@
               data-id="{{record.id}}"
               data-code="{{record.codeValue}}"
               disabled="{{processingRecordId === record.id}}"
-              bindtap="handleMarkRecord"
+              catchtap="handleMarkRecord"
             >
               {{processingRecordId === record.id ? '处理中' : '标记'}}
             </button>
@@ -165,7 +173,7 @@
               data-id="{{record.id}}"
               data-code="{{record.codeValue}}"
               disabled="{{processingRecordId === record.id}}"
-              bindtap="handleUndoMarkRecord"
+              catchtap="handleUndoMarkRecord"
             >
               {{processingRecordId === record.id ? '处理中' : '撤回'}}
             </button>
@@ -174,7 +182,7 @@
               data-id="{{record.id}}"
               data-code="{{record.codeValue}}"
               disabled="{{processingRecordId === record.id}}"
-              bindtap="handleArchiveRecord"
+              catchtap="handleArchiveRecord"
             >
               {{processingRecordId === record.id ? '处理中' : '归档'}}
             </button>
