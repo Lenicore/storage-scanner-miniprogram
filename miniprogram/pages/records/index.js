@@ -197,6 +197,66 @@ function buildCategoryOptions(records) {
   return result;
 }
 
+function getStatusFilterText(status) {
+  if (status === 'pending') {
+    return '未处理';
+  }
+
+  if (status === 'marked') {
+    return '已标记';
+  }
+
+  if (status === 'archived') {
+    return '已归档';
+  }
+
+  return '全部';
+}
+
+function buildStatusFilterOptions() {
+  return [{
+    label: '全部',
+    value: 'all'
+  }, {
+    label: '未处理',
+    value: 'pending'
+  }, {
+    label: '已标记',
+    value: 'marked'
+  }, {
+    label: '已归档',
+    value: 'archived'
+  }];
+}
+
+function buildCategoryFilterSheetOptions(options) {
+  const source = Array.isArray(options) ? options : [];
+  const result = [];
+  let index = 0;
+
+  for (index = 0; index < source.length; index += 1) {
+    result.push({
+      label: source[index].name,
+      value: source[index].id
+    });
+  }
+
+  return result;
+}
+
+function getCategoryFilterText(options, categoryId) {
+  const source = Array.isArray(options) ? options : [];
+  let index = 0;
+
+  for (index = 0; index < source.length; index += 1) {
+    if (source[index].id === categoryId) {
+      return source[index].name;
+    }
+  }
+
+  return '全部分类';
+}
+
 function filterRecords(records, filters) {
   const userKeyword = (filters.userKeyword || '').trim();
   const statusFilter = filters.statusFilter || 'all';
@@ -533,12 +593,27 @@ Page({
     dateFilterTip: '',
     userKeyword: '',
     statusFilter: 'all',
+    statusFilterText: '全部',
     categoryFilter: 'all',
+    categoryFilterText: '全部分类',
     currentCategoryViewId: '',
     currentCategoryViewName: '',
+    filterSheetVisible: false,
+    filterSheetTitle: '',
+    filterSheetMode: '',
+    filterSheetSelectedValue: '',
+    filterSheetOptions: [],
+    categoryRenameDialogVisible: false,
+    categoryActionCategoryId: '',
+    categoryActionCategoryName: '',
+    categoryRenameValue: '',
+    isCategoryActionProcessing: false,
     filteredRecordCount: 0,
     isAdmin: false,
     currentUserRole: 'user'
+  },
+
+  noop: function () {
   },
 
   onLoad: function () {
@@ -621,6 +696,8 @@ Page({
     this.setData({
       allRecords: records,
       categoryOptions: categoryOptions,
+      statusFilterText: getStatusFilterText(this.data.statusFilter),
+      categoryFilterText: getCategoryFilterText(categoryOptions, this.data.categoryFilter),
       categoryGroups: view.groups,
       selectedRecordIds: safeSelectedIds,
       selectedCount: view.selectedCount,
@@ -715,32 +792,72 @@ Page({
     this.refreshCurrentView();
   },
 
-  handleChangeStatusFilter: function (event) {
-    const status = event.currentTarget.dataset.status || 'all';
-
-    if (status === this.data.statusFilter) {
-      return;
-    }
-
+  openStatusFilterSheet: function () {
     this.setData({
-      statusFilter: status
+      filterSheetVisible: true,
+      filterSheetTitle: '选择状态',
+      filterSheetMode: 'status',
+      filterSheetSelectedValue: this.data.statusFilter,
+      filterSheetOptions: buildStatusFilterOptions()
     });
-
-    this.refreshCurrentView();
   },
 
-  handleChangeCategoryFilter: function (event) {
-    const categoryId = event.currentTarget.dataset.id || 'all';
+  openCategoryFilterSheet: function () {
+    this.setData({
+      filterSheetVisible: true,
+      filterSheetTitle: '选择分类',
+      filterSheetMode: 'category',
+      filterSheetSelectedValue: this.data.categoryFilter,
+      filterSheetOptions: buildCategoryFilterSheetOptions(this.data.categoryOptions)
+    });
+  },
 
-    if (categoryId === this.data.categoryFilter) {
+  handleCloseFilterSheet: function () {
+    this.setData({
+      filterSheetVisible: false,
+      filterSheetTitle: '',
+      filterSheetMode: '',
+      filterSheetSelectedValue: '',
+      filterSheetOptions: []
+    });
+  },
+
+  handleSelectFilterOption: function (event) {
+    const mode = event.currentTarget.dataset.mode || '';
+    const value = event.currentTarget.dataset.value || '';
+
+    if (!mode) {
       return;
     }
 
-    this.setData({
-      categoryFilter: categoryId
-    });
+    if (mode === 'status') {
+      this.handleCloseFilterSheet();
 
-    this.refreshCurrentView();
+      if (value === this.data.statusFilter) {
+        return;
+      }
+
+      this.setData({
+        statusFilter: value
+      }, () => {
+        this.refreshCurrentView();
+      });
+      return;
+    }
+
+    if (mode === 'category') {
+      this.handleCloseFilterSheet();
+
+      if (value === this.data.categoryFilter) {
+        return;
+      }
+
+      this.setData({
+        categoryFilter: value
+      }, () => {
+        this.refreshCurrentView();
+      });
+    }
   },
 
   handleEnterCategoryView: function (event) {
@@ -770,6 +887,211 @@ Page({
     });
 
     this.refreshCurrentView();
+  },
+
+  handleOpenCategoryActions: function (event) {
+    const categoryId = event.currentTarget.dataset.categoryId || '';
+    const categoryName = event.currentTarget.dataset.categoryName || '';
+
+    if (!categoryId || this.data.isCategoryActionProcessing) {
+      return;
+    }
+
+    this.setData({
+      categoryActionCategoryId: categoryId,
+      categoryActionCategoryName: categoryName || '未分类'
+    });
+
+    wx.showActionSheet({
+      itemList: ['修改分类名称', '删除分类'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.openCategoryRenameDialog(categoryId, categoryName);
+          return;
+        }
+
+        if (res.tapIndex === 1) {
+          this.confirmDeleteCategory(categoryId, categoryName);
+        }
+      }
+    });
+  },
+
+  openCategoryRenameDialog: function (categoryId, categoryName) {
+    this.setData({
+      categoryRenameDialogVisible: true,
+      categoryActionCategoryId: categoryId || '',
+      categoryActionCategoryName: categoryName || '未分类',
+      categoryRenameValue: categoryName || ''
+    });
+  },
+
+  handleCloseCategoryRenameDialog: function () {
+    if (this.data.isCategoryActionProcessing) {
+      return;
+    }
+
+    this.setData({
+      categoryRenameDialogVisible: false,
+      categoryRenameValue: ''
+    });
+  },
+
+  handleCategoryRenameInput: function (event) {
+    this.setData({
+      categoryRenameValue: event.detail.value || ''
+    });
+  },
+
+  handleConfirmCategoryRename: function () {
+    const categoryId = this.data.categoryActionCategoryId || '';
+    const nextName = (this.data.categoryRenameValue || '').trim();
+
+    if (!categoryId) {
+      return;
+    }
+
+    if (!nextName) {
+      wx.showToast({
+        title: '分类名称不能为空',
+        icon: 'none'
+      });
+      return;
+    }
+
+    this.setData({
+      isCategoryActionProcessing: true
+    });
+
+    wx.showLoading({
+      title: '修改中',
+      mask: true
+    });
+
+    wx.cloud.callFunction({
+      name: 'updateCategoryName',
+      data: {
+        category_id: categoryId,
+        name: nextName
+      }
+    }).then((res) => {
+      const result = res.result || {};
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.message || '修改分类失败',
+          icon: 'none'
+        });
+        return false;
+      }
+
+      if (this.data.currentCategoryViewId === categoryId) {
+        this.setData({
+          currentCategoryViewName: nextName
+        });
+      }
+
+      this.setData({
+        categoryRenameDialogVisible: false,
+        categoryRenameValue: '',
+        categoryActionCategoryName: nextName
+      });
+
+      wx.showToast({
+        title: '修改成功',
+        icon: 'success'
+      });
+
+      return this.fetchRecords([]).then(() => {
+        return true;
+      });
+    }).catch((error) => {
+      console.error('update category name failed:', error);
+      wx.showToast({
+        title: '修改分类失败',
+        icon: 'none'
+      });
+      return false;
+    }).finally(() => {
+      wx.hideLoading();
+      this.setData({
+        isCategoryActionProcessing: false
+      });
+    });
+  },
+
+  confirmDeleteCategory: function (categoryId, categoryName) {
+    wx.showModal({
+      title: '确认删除',
+      content: `确认删除该分类？删除后无法恢复\n${categoryName || '未分类'}`,
+      success: (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        this.deleteCategory(categoryId);
+      }
+    });
+  },
+
+  deleteCategory: function (categoryId) {
+    if (!categoryId) {
+      return;
+    }
+
+    this.setData({
+      isCategoryActionProcessing: true
+    });
+
+    wx.showLoading({
+      title: '删除中',
+      mask: true
+    });
+
+    wx.cloud.callFunction({
+      name: 'deleteCategory',
+      data: {
+        category_id: categoryId
+      }
+    }).then((res) => {
+      const result = res.result || {};
+
+      if (!result.success) {
+        wx.showToast({
+          title: result.message || '删除分类失败',
+          icon: 'none'
+        });
+        return false;
+      }
+
+      if (this.data.currentCategoryViewId === categoryId) {
+        this.setData({
+          currentCategoryViewId: '',
+          currentCategoryViewName: ''
+        });
+      }
+
+      wx.showToast({
+        title: '删除成功',
+        icon: 'success'
+      });
+
+      return this.fetchRecords([]).then(() => {
+        return true;
+      });
+    }).catch((error) => {
+      console.error('delete category failed:', error);
+      wx.showToast({
+        title: '删除分类失败',
+        icon: 'none'
+      });
+      return false;
+    }).finally(() => {
+      wx.hideLoading();
+      this.setData({
+        isCategoryActionProcessing: false
+      });
+    });
   },
 
   handleToggleBatchMode: function () {

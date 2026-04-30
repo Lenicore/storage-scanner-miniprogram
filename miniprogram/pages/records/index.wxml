@@ -17,18 +17,36 @@
   </view>
 
   <view class="search-card">
-    <view class="search-box">
+    <view class="filter-date-box">
       <input
-        class="search-input"
+        class="filter-date-input"
         type="number"
         maxlength="8"
         placeholder="输入日期，如 20260402"
         value="{{dateFilterInput}}"
         bindinput="handleDateFilterInput"
       />
-      <text wx:if="{{dateFilterInput}}" class="search-clear" bindtap="handleClearDateFilter">清空</text>
+      <text wx:if="{{dateFilterInput}}" class="filter-date-clear" bindtap="handleClearDateFilter">清空</text>
     </view>
     <text wx:if="{{dateFilterTip}}" class="filter-tip">{{dateFilterTip}}</text>
+
+    <view class="filter-select-row">
+      <view class="filter-select-card" bindtap="openStatusFilterSheet">
+        <text class="filter-select-label">状态</text>
+        <view class="filter-select-value-wrap">
+          <text class="filter-select-value">{{statusFilterText}}</text>
+          <text class="filter-select-arrow">⌄</text>
+        </view>
+      </view>
+
+      <view class="filter-select-card filter-select-card-wide" bindtap="openCategoryFilterSheet">
+        <text class="filter-select-label">分类</text>
+        <view class="filter-select-value-wrap">
+          <text class="filter-select-value">{{categoryFilterText}}</text>
+          <text class="filter-select-arrow">⌄</text>
+        </view>
+      </view>
+    </view>
 
     <view wx:if="{{isAdmin}}" class="search-box search-box-secondary">
       <input
@@ -40,58 +58,6 @@
       <text wx:if="{{userKeyword}}" class="search-clear" bindtap="handleClearUserKeyword">清空</text>
     </view>
 
-    <view class="filter-block">
-      <text class="filter-label">状态</text>
-      <scroll-view class="filter-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
-        <view class="filter-chip-row">
-          <text
-            class="filter-chip {{statusFilter === 'all' ? 'filter-chip-active' : ''}}"
-            data-status="all"
-            bindtap="handleChangeStatusFilter"
-          >
-            全部
-          </text>
-          <text
-            class="filter-chip {{statusFilter === 'pending' ? 'filter-chip-active' : ''}}"
-            data-status="pending"
-            bindtap="handleChangeStatusFilter"
-          >
-            未处理
-          </text>
-          <text
-            class="filter-chip {{statusFilter === 'marked' ? 'filter-chip-active' : ''}}"
-            data-status="marked"
-            bindtap="handleChangeStatusFilter"
-          >
-            已标记
-          </text>
-          <text
-            class="filter-chip {{statusFilter === 'archived' ? 'filter-chip-active' : ''}}"
-            data-status="archived"
-            bindtap="handleChangeStatusFilter"
-          >
-            已归档
-          </text>
-        </view>
-      </scroll-view>
-    </view>
-
-    <view class="filter-block">
-      <text class="filter-label">分类</text>
-      <scroll-view class="filter-scroll" scroll-x="true" enable-flex="true" show-scrollbar="false">
-        <view class="filter-chip-row">
-          <text
-            wx:for="{{categoryOptions}}"
-            wx:key="id"
-            class="filter-chip {{categoryFilter === item.id ? 'filter-chip-active' : ''}}"
-            data-id="{{item.id}}"
-            bindtap="handleChangeCategoryFilter"
-          >
-            {{item.name}}
-          </text>
-        </view>
-      </scroll-view>
-    </view>
   </view>
 
   <view class="batch-toolbar">
@@ -141,6 +107,14 @@
             catchtap="handleEnterCategoryView"
           >
             进入
+          </text>
+          <text
+            class="cat-section-more-btn"
+            data-category-id="{{item.items[0].categoryId}}"
+            data-category-name="{{item.categoryName}}"
+            catchtap="handleOpenCategoryActions"
+          >
+            ⋯
           </text>
         </view>
         <view wx:else class="cat-section-head-action">
@@ -236,6 +210,58 @@
   </view>
 
   <view wx:if="{{isBatchMode}}" class="batch-footer-space"></view>
+
+  <view wx:if="{{categoryRenameDialogVisible}}" class="dialog-mask" bindtap="handleCloseCategoryRenameDialog">
+    <view class="dialog-card" catchtap="noop">
+      <text class="dialog-title">修改分类名称</text>
+      <text class="dialog-subtitle">请输入新的分类名称</text>
+      <input
+        class="dialog-input"
+        value="{{categoryRenameValue}}"
+        placeholder="请输入分类名称"
+        focus="{{categoryRenameDialogVisible}}"
+        bindinput="handleCategoryRenameInput"
+      />
+      <view class="dialog-actions">
+        <button
+          class="dialog-btn dialog-btn-secondary"
+          disabled="{{isCategoryActionProcessing}}"
+          bindtap="handleCloseCategoryRenameDialog"
+        >
+          取消
+        </button>
+        <button
+          class="dialog-btn dialog-btn-primary"
+          disabled="{{isCategoryActionProcessing}}"
+          bindtap="handleConfirmCategoryRename"
+        >
+          {{isCategoryActionProcessing ? '处理中' : '确认'}}
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{filterSheetVisible}}" class="dialog-mask" bindtap="handleCloseFilterSheet">
+    <view class="filter-sheet-card" catchtap="noop">
+      <view class="filter-sheet-head">
+        <text class="filter-sheet-title">{{filterSheetTitle}}</text>
+        <text class="filter-sheet-close" bindtap="handleCloseFilterSheet">关闭</text>
+      </view>
+      <scroll-view class="filter-sheet-body" scroll-y="true">
+        <view
+          wx:for="{{filterSheetOptions}}"
+          wx:key="value"
+          class="filter-sheet-option {{filterSheetSelectedValue === item.value ? 'filter-sheet-option-active' : ''}}"
+          data-mode="{{filterSheetMode}}"
+          data-value="{{item.value}}"
+          bindtap="handleSelectFilterOption"
+        >
+          <text class="filter-sheet-option-label">{{item.label}}</text>
+          <text wx:if="{{filterSheetSelectedValue === item.value}}" class="filter-sheet-option-check">已选</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
 
   <view wx:if="{{isBatchMode}}" class="batch-footer">
     <view class="batch-footer-summary">
