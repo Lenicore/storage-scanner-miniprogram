@@ -17,6 +17,20 @@ function getCodeType(scanType) {
   return scanType === 'QR_CODE' ? 'QR_CODE' : 'BAR_CODE';
 }
 
+function formatCodeTypeText(codeType) {
+  const value = codeType || '';
+
+  if (value === 'QR_CODE' || value === 'QR') {
+    return '二维码';
+  }
+
+  if (value === 'BAR_CODE' || value === 'BAR') {
+    return '条形码';
+  }
+
+  return '其他';
+}
+
 function normalizeDate(value) {
   if (!value) {
     return new Date();
@@ -34,6 +48,9 @@ function formatCloudRecord(record) {
     id: record._id || `${Date.now()}`,
     codeValue: record.code_value,
     codeType: record.code_type,
+    codeTypeText: formatCodeTypeText(record.code_type),
+    qrFileId: record.qr_file_id || '',
+    qrCloudPath: record.qr_cloud_path || '',
     categoryId: record.category_id || '',
     categoryName: record.category_name || '',
     scanTime: formatTime(normalizeDate(record.created_at)),
@@ -85,6 +102,41 @@ function prependCategory(list, category) {
   });
 
   return result;
+}
+
+function updateLocalRecordWithCloudData(localRecord, cloudResult) {
+  const result = cloudResult || {};
+  const recordData = result.data || {};
+
+  return {
+    id: result.id || localRecord.id,
+    codeValue: recordData.code_value || localRecord.codeValue,
+    codeType: recordData.code_type || localRecord.codeType,
+    codeTypeText: formatCodeTypeText(recordData.code_type || localRecord.codeType),
+    qrFileId: recordData.qr_file_id || localRecord.qrFileId || '',
+    qrCloudPath: recordData.qr_cloud_path || localRecord.qrCloudPath || '',
+    categoryId: recordData.category_id || localRecord.categoryId,
+    categoryName: recordData.category_name || localRecord.categoryName,
+    scanTime: formatTime(normalizeDate(recordData.created_at || localRecord.scanTime)),
+    status: recordData.status || localRecord.status || 'pending'
+  };
+}
+
+function replaceRecordAtTop(list, record, sourceRecord) {
+  const result = [record];
+  let index = 0;
+
+  for (index = 0; index < list.length; index += 1) {
+    if (
+      list[index].id !== record.id &&
+      list[index].id !== sourceRecord.id &&
+      !(list[index].codeValue === sourceRecord.codeValue && list[index].scanTime === sourceRecord.scanTime)
+    ) {
+      result.push(list[index]);
+    }
+  }
+
+  return result.slice(0, 6);
 }
 
 Page({
@@ -407,9 +459,13 @@ Page({
           id: `${Date.now()}`,
           codeValue: codeValue,
           codeType: codeType,
+        codeTypeText: formatCodeTypeText(codeType),
+        qrFileId: '',
+        qrCloudPath: '',
           categoryId: selectedCategory.id,
           categoryName: selectedCategory.name,
-          scanTime: scanTime
+        scanTime: scanTime,
+        status: 'pending'
         };
 
         this.setData({
@@ -417,7 +473,18 @@ Page({
           recentRecords: [record].concat(this.data.recentRecords).slice(0, 6)
         });
 
-        this.saveScanRecordToCloud(record);
+        this.saveScanRecordToCloud(record).then((result) => {
+          if (!result || !result.success) {
+            return;
+          }
+
+          const cloudRecord = updateLocalRecordWithCloudData(record, result);
+
+          this.setData({
+            scanResult: cloudRecord,
+            recentRecords: replaceRecordAtTop(this.data.recentRecords, cloudRecord, record)
+          });
+        });
 
         wx.showToast({
           title: '扫码成功',

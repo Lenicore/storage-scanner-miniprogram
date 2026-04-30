@@ -267,6 +267,11 @@
   min-width: 0;
 }
 
+.record-cell-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .record-check {
   display: flex;
   align-items: center;
@@ -303,6 +308,27 @@
   line-height: 1.45;
   word-break: break-all;
   overflow-wrap: anywhere;
+}
+
+.record-cell-qr,
+.record-cell-qr-placeholder {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: 12rpx;
+  border-radius: 14rpx;
+  background: #ffffff;
+  border: 1rpx solid #e5e7eb;
+}
+
+.record-cell-qr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-cell-qr-placeholder-text {
+  color: #9ca3af;
+  font-size: 20rpx;
 }
 
 .record-status-tag {

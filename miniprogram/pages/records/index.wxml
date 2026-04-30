@@ -133,7 +133,13 @@
               >
                 <text class="record-check-icon">{{record.isSelected ? '✓' : ''}}</text>
               </view>
-              <text class="record-cell-code">{{record.codeValue}}</text>
+              <view class="record-cell-content">
+                <image wx:if="{{record.qrFileId}}" class="record-cell-qr" src="{{record.qrFileId}}" mode="aspectFit" />
+                <view wx:else class="record-cell-qr-placeholder">
+                  <text class="record-cell-qr-placeholder-text">无图</text>
+                </view>
+                <text class="record-cell-code">{{record.codeValue}}</text>
+              </view>
             </view>
             <text class="record-status-tag {{record.statusClassName}}">{{record.statusText}}</text>
           </view>

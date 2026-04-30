@@ -4,6 +4,7 @@
   "description": "Create scan record in cloud database",
   "main": "index.js",
   "dependencies": {
+    "qrcode": "^1.5.4",
     "wx-server-sdk": "~2.4.0"
   }
 }

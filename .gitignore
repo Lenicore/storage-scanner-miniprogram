@@ -1,0 +1,31 @@
+# Node / npm
+node_modules/
+cloudfunctions/**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# WeChat Mini Program
+miniprogram_npm/
+project.private.config.json
+
+# Build / cache
+dist/
+build/
+.cache/
+.temp/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,10 +1,31 @@
 const cloud = require('wx-server-sdk');
+const QRCode = require('qrcode');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
 
 const db = cloud.database();
+
+async function createQrAsset(openid, codeValue, now) {
+  const timestamp = now.getTime();
+  const randomSuffix = Math.floor(Math.random() * 1000000);
+  const cloudPath = `scan-qrcodes/${openid}/${timestamp}-${randomSuffix}.png`;
+  const fileContent = await QRCode.toBuffer(codeValue, {
+    type: 'png',
+    width: 360,
+    margin: 1
+  });
+  const uploadResult = await cloud.uploadFile({
+    cloudPath: cloudPath,
+    fileContent: fileContent
+  });
+
+  return {
+    qrFileId: uploadResult.fileID || '',
+    qrCloudPath: cloudPath
+  };
+}
 
 exports.main = async (event) => {
   try {
@@ -39,12 +60,16 @@ exports.main = async (event) => {
       };
     }
 
+    const qrAsset = await createQrAsset(openid, codeValue, now);
     const recordData = {
       code_value: codeValue,
       code_type: codeType,
+      qr_file_id: qrAsset.qrFileId,
+      qr_cloud_path: qrAsset.qrCloudPath,
       category_id: categoryId,
       category_name: categoryName,
       user_id: openid,
+      updated_at: now,
       created_at: now,
       status: 'pending'
     };
@@ -56,7 +81,8 @@ exports.main = async (event) => {
     return {
       success: true,
       id: result._id,
-      data: recordData
+      data: recordData,
+      qr_file_id: qrAsset.qrFileId
     };
   } catch (error) {
     console.error('create scan record failed:', error);

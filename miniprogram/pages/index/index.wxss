@@ -217,6 +217,19 @@
   gap: 14rpx;
 }
 
+.result-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18rpx;
+}
+
+.result-qr-image {
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 20rpx;
+  background: #f8fafc;
+}
+
 .result-item {
   padding: 20rpx 22rpx;
   background: #f8fafc;
@@ -245,6 +258,37 @@
 .record-item {
   padding: 22rpx 0;
   border-bottom: 1rpx solid #eeeeee;
+}
+
+.record-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 18rpx;
+}
+
+.record-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-qr-image,
+.record-qr-placeholder {
+  width: 132rpx;
+  height: 132rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx;
+  background: #f8fafc;
+}
+
+.record-qr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-qr-placeholder-text {
+  color: #9ca3af;
+  font-size: 22rpx;
 }
 
 .record-meta {

@@ -159,6 +159,8 @@ function formatCloudRecord(record) {
   const userId = record.user_id || '';
   const userName = record.user_name || '';
   const userDisplayName = userName || userId || '未知用户';
+  const qrFileId = record.qr_file_id || '';
+  const qrCloudPath = record.qr_cloud_path || '';
 
   return {
     id: record._id || `${Date.now()}`,
@@ -174,6 +176,8 @@ function formatCloudRecord(record) {
     userId: userId,
     userName: userName,
     userDisplayName: userDisplayName,
+    qrFileId: qrFileId,
+    qrCloudPath: qrCloudPath,
     scanTime: formatSecondTime(createdAt),
     createdAtMs: createdAt.getTime()
   };
@@ -194,6 +198,8 @@ function cloneRecordWithSelection(record, isSelected) {
     userId: record.userId,
     userName: record.userName,
     userDisplayName: record.userDisplayName,
+    qrFileId: record.qrFileId,
+    qrCloudPath: record.qrCloudPath,
     scanTime: record.scanTime,
     createdAtMs: record.createdAtMs,
     isSelected: !!isSelected

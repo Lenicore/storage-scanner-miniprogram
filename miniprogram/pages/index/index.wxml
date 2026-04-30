@@ -43,6 +43,10 @@
       <text class="section-title">扫码结果</text>
     </view>
 
+    <view wx:if="{{scanResult.qrFileId}}" class="result-qr-wrap">
+      <image class="result-qr-image" src="{{scanResult.qrFileId}}" mode="aspectFit" />
+    </view>
+
     <view class="result-grid">
       <view class="result-item">
         <text class="result-label">code_value</text>
@@ -51,7 +55,7 @@
 
       <view class="result-item">
         <text class="result-label">code_type</text>
-        <text class="result-value">{{scanResult.codeType}}</text>
+        <text class="result-value">{{scanResult.codeTypeText}}</text>
       </view>
 
       <view class="result-item">
@@ -73,14 +77,22 @@
 
     <view wx:if="{{recentRecords.length}}">
       <view class="record-item" wx:for="{{recentRecords}}" wx:key="id">
-        <view class="record-meta">
-          <view class="record-left">
-            <text wx:if="{{item.categoryName}}" class="record-category">{{item.categoryName}}</text>
-            <text class="record-type">{{item.codeType}}</text>
+        <view class="record-row">
+          <image wx:if="{{item.qrFileId}}" class="record-qr-image" src="{{item.qrFileId}}" mode="aspectFit" />
+          <view wx:else class="record-qr-placeholder">
+            <text class="record-qr-placeholder-text">待生成</text>
           </view>
-          <text class="record-time">{{item.scanTime}}</text>
+          <view class="record-main">
+            <view class="record-meta">
+              <view class="record-left">
+                <text wx:if="{{item.categoryName}}" class="record-category">{{item.categoryName}}</text>
+                <text class="record-type">{{item.codeTypeText}}</text>
+              </view>
+              <text class="record-time">{{item.scanTime}}</text>
+            </view>
+            <text class="record-value">{{item.codeValue}}</text>
+          </view>
         </view>
-        <text class="record-value">{{item.codeValue}}</text>
       </view>
     </view>
 
