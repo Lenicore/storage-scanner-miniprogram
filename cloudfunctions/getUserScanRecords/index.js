@@ -25,7 +25,7 @@ exports.main = async () => {
         user_id: openid
       })
       .orderBy('created_at', 'desc')
-      .limit(100)
+      .limit(1000)
       .get();
 
     return {

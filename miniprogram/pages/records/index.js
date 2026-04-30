@@ -13,16 +13,6 @@ function formatSecondTime(date) {
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
-function formatMinuteTime(date) {
-  const year = date.getFullYear();
-  const month = padNumber(date.getMonth() + 1);
-  const day = padNumber(date.getDate());
-  const hour = padNumber(date.getHours());
-  const minute = padNumber(date.getMinutes());
-
-  return `${year}-${month}-${day} ${hour}:${minute}`;
-}
-
 function normalizeDate(value) {
   if (!value) {
     return null;
@@ -35,39 +25,62 @@ function normalizeDate(value) {
   return new Date(value);
 }
 
+function formatCodeTypeText(codeType) {
+  const value = codeType || '';
+
+  if (value === 'QR_CODE' || value === 'QR') {
+    return '二维码';
+  }
+
+  if (value === 'BAR_CODE' || value === 'BAR') {
+    return '条形码';
+  }
+
+  return '其他';
+}
+
 function formatCloudRecord(record) {
   const createdAt = normalizeDate(record.created_at) || new Date();
-  const batchTime = normalizeDate(record.batch_time) || createdAt;
-  const batchId = record.batch_id || '';
-  const fallbackBatchKey = formatMinuteTime(batchTime);
+  const rawName = record.category_name || '';
+  const trimmed = typeof rawName === 'string' ? rawName.trim() : '';
+  const categoryName = trimmed ? trimmed : '未分类';
+  const codeType = record.code_type || 'BAR_CODE';
 
   return {
     id: record._id || `${Date.now()}`,
-    batchId: batchId,
-    batchKey: batchId || fallbackBatchKey,
-    batchTitle: formatMinuteTime(batchTime),
+    groupKey: categoryName,
     codeValue: record.code_value || '',
-    codeType: record.code_type || 'BAR_CODE',
-    categoryName: record.category_name || '未分类',
+    codeType: codeType,
+    codeTypeText: formatCodeTypeText(codeType),
+    categoryName: categoryName,
     scanTime: formatSecondTime(createdAt),
-    status: record.status || 'pending'
+    createdAtMs: createdAt.getTime()
   };
 }
 
-function groupRecordsByBatch(records) {
+function sortRecordsByTimeDesc(items) {
+  return items.slice().sort(function (a, b) {
+    return b.createdAtMs - a.createdAtMs;
+  });
+}
+
+function groupRecordsByCategoryName(records) {
   const groupMap = {};
   const groups = [];
   let index = 0;
+  let gi = 0;
 
   for (index = 0; index < records.length; index += 1) {
     const item = records[index];
-    const key = item.batchKey || item.id;
+    const key = item.groupKey || item.categoryName || '未分类';
     let group = groupMap[key];
 
     if (!group) {
       group = {
         id: key,
-        title: item.batchTitle,
+        categoryName: item.categoryName || '未分类',
+        count: 0,
+        latestMs: 0,
         items: []
       };
       groupMap[key] = group;
@@ -75,14 +88,27 @@ function groupRecordsByBatch(records) {
     }
 
     group.items.push(item);
+    group.count += 1;
+
+    if (item.createdAtMs > group.latestMs) {
+      group.latestMs = item.createdAtMs;
+    }
   }
+
+  for (gi = 0; gi < groups.length; gi += 1) {
+    groups[gi].items = sortRecordsByTimeDesc(groups[gi].items);
+  }
+
+  groups.sort(function (a, b) {
+    return b.latestMs - a.latestMs;
+  });
 
   return groups;
 }
 
 Page({
   data: {
-    batchGroups: [],
+    categoryGroups: [],
     isLoadingRecords: false
   },
 
@@ -93,11 +119,11 @@ Page({
     this.initRecords();
   },
 
-  initRecords: async function () {
+  initRecords: function () {
     return this.fetchRecords();
   },
 
-  fetchRecords: async function () {
+  fetchRecords: function () {
     if (this.data.isLoadingRecords) {
       return Promise.resolve([]);
     }
@@ -120,13 +146,13 @@ Page({
       }
 
       const records = list.map((item) => formatCloudRecord(item));
-      const batchGroups = groupRecordsByBatch(records);
+      const categoryGroups = groupRecordsByCategoryName(records);
 
       this.setData({
-        batchGroups: batchGroups
+        categoryGroups: categoryGroups
       });
 
-      return batchGroups;
+      return categoryGroups;
     }).catch((error) => {
       console.error('fetch records failed:', error);
       wx.showToast({

@@ -93,10 +93,14 @@ Page({
     recentRecords: [],
     categories: [],
     selectedCategory: null,
+    categoryPickerVisible: false,
     isLoadingUser: false,
     isLoadingRecords: false,
     isLoadingCategories: false,
     isCreatingCategory: false
+  },
+
+  noop: function () {
   },
 
   onLoad: function () {
@@ -177,10 +181,6 @@ Page({
         selectedCategory = findCategoryById(list, selectedCategory.id);
       }
 
-      if (!selectedCategory && list.length) {
-        selectedCategory = list[0];
-      }
-
       this.setData({
         categories: list,
         selectedCategory: selectedCategory || null
@@ -232,7 +232,27 @@ Page({
     });
   },
 
-  handleSelectCategory: function (event) {
+  handleOpenCategoryPicker: function () {
+    if (!this.data.categories.length) {
+      wx.showToast({
+        title: '请先新建分类',
+        icon: 'none'
+      });
+      return;
+    }
+
+    this.setData({
+      categoryPickerVisible: true
+    });
+  },
+
+  handleCloseCategoryPicker: function () {
+    this.setData({
+      categoryPickerVisible: false
+    });
+  },
+
+  handlePickCategoryRow: function (event) {
     const categoryId = event.currentTarget.dataset.id;
     const category = findCategoryById(this.data.categories, categoryId);
 
@@ -241,7 +261,8 @@ Page({
     }
 
     this.setData({
-      selectedCategory: category
+      selectedCategory: category,
+      categoryPickerVisible: false
     });
   },
 
@@ -371,7 +392,7 @@ Page({
 
     if (!selectedCategory || !selectedCategory.id) {
       wx.showToast({
-        title: '请先选择分类',
+        title: '请先选择或新建分类',
         icon: 'none'
       });
       return;

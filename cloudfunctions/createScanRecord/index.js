@@ -5,19 +5,6 @@ cloud.init({
 });
 
 const db = cloud.database();
-const BATCH_EXPIRE_MS = 30 * 60 * 1000;
-
-function normalizeDate(value) {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  return new Date(value);
-}
 
 exports.main = async (event) => {
   try {
@@ -52,52 +39,12 @@ exports.main = async (event) => {
       };
     }
 
-    const latestBatchResult = await db.collection('batches')
-      .where({
-        category_id: categoryId,
-        created_by: openid
-      })
-      .orderBy('created_at', 'desc')
-      .limit(1)
-      .get();
-
-    let currentBatch = null;
-    const latestBatch = latestBatchResult.data && latestBatchResult.data.length
-      ? latestBatchResult.data[0]
-      : null;
-    const latestBatchTime = latestBatch ? normalizeDate(latestBatch.created_at) : null;
-
-    if (latestBatch && latestBatchTime && now.getTime() - latestBatchTime.getTime() < BATCH_EXPIRE_MS) {
-      currentBatch = latestBatch;
-    } else {
-      const batchData = {
-        category_id: categoryId,
-        category_name: categoryName,
-        created_by: openid,
-        created_at: now
-      };
-      const batchResult = await db.collection('batches').add({
-        data: batchData
-      });
-
-      currentBatch = {
-        _id: batchResult._id,
-        category_id: categoryId,
-        category_name: categoryName,
-        created_by: openid,
-        created_at: now
-      };
-    }
-
-    const batchTime = normalizeDate(currentBatch.created_at) || now;
     const recordData = {
       code_value: codeValue,
       code_type: codeType,
       category_id: categoryId,
       category_name: categoryName,
       user_id: openid,
-      batch_id: currentBatch._id,
-      batch_time: batchTime,
       created_at: now,
       status: 'pending'
     };
@@ -109,11 +56,7 @@ exports.main = async (event) => {
     return {
       success: true,
       id: result._id,
-      data: recordData,
-      batch: {
-        _id: currentBatch._id,
-        created_at: batchTime
-      }
+      data: recordData
     };
   } catch (error) {
     console.error('create scan record failed:', error);

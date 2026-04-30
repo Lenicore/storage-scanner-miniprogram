@@ -1,37 +1,31 @@
 <view class="records-page">
   <view class="records-hero">
     <text class="records-title">扫码记录</text>
-    <text class="records-subtitle">按批次查看最近同步到云端的扫码记录。</text>
+    <text class="records-subtitle">按分类分组查看，组内按时间从新到旧。</text>
   </view>
 
-  <view class="records-card">
-    <view wx:if="{{isLoadingRecords}}" class="records-empty">
-      <text class="records-empty-text">记录加载中...</text>
-    </view>
+  <view wx:if="{{isLoadingRecords}}" class="records-loading-card">
+    <text class="records-empty-text">记录加载中...</text>
+  </view>
 
-    <view wx:elif="{{batchGroups.length}}">
-      <view class="batch-group" wx:for="{{batchGroups}}" wx:key="id">
-        <text class="batch-title">{{item.title}}</text>
+  <block wx:elif="{{categoryGroups.length}}">
+    <view class="cat-section" wx:for="{{categoryGroups}}" wx:key="id">
+      <view class="cat-section-head">
+        <text class="cat-section-title">{{item.categoryName}}</text>
+        <text class="cat-section-count">{{item.count}} 条</text>
+      </view>
 
-        <view class="record-item" wx:for="{{item.items}}" wx:for-item="record" wx:key="id">
-          <view class="record-top">
-            <text class="record-value">{{record.codeValue}}</text>
-            <text class="record-time">{{record.scanTime}}</text>
-          </view>
-
-          <view class="record-meta">
-            <text class="record-category">{{record.categoryName}}</text>
-            <text class="record-dot">·</text>
-            <text class="record-type">{{record.codeType}}</text>
-            <text class="record-dot">·</text>
-            <text class="record-status">{{record.status}}</text>
-          </view>
+      <view class="record-cell-grid">
+        <view class="record-cell" wx:for="{{item.items}}" wx:for-item="record" wx:key="id">
+          <text class="record-cell-code">{{record.codeValue}}</text>
+          <text class="record-cell-type">{{record.codeTypeText}}</text>
+          <text class="record-cell-time">{{record.scanTime}}</text>
         </view>
       </view>
     </view>
+  </block>
 
-    <view wx:else class="records-empty">
-      <text class="records-empty-text">暂无云端记录，先回首页扫一个码吧。</text>
-    </view>
+  <view wx:else class="records-loading-card">
+    <text class="records-empty-text">暂无云端记录，先回首页扫一个码吧。</text>
   </view>
 </view>
